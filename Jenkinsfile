@@ -11,7 +11,7 @@ pipeline {
         IMAGE = 'g3n1k/telcodash-fe'
         TAG = 'latest'
         REPO = 'https://github.com/Smartelco/smartelco-analytics-dashboard-fe.git'
-        BRANCH = 'master'
+        BRANCH = 'main'
         CRED_ID = 'Smartelco-IT'
         DOCKER_ID = 'test-cicd-docker'
         LOG_FILE = "jenkins_error.log"
