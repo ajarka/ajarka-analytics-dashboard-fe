@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  dashboard:
+    build:
+      context: .
+      args:
+        - GITHUB_TOKEN=${GITHUB_TOKEN}
+    ports:
+      - "80:80"
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+
+# how to run:
+# GITHUB_TOKEN=your_token_here docker-compose up -d
