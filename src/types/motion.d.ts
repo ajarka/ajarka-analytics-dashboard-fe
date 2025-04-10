@@ -2,13 +2,16 @@ declare module '@motionone/solid' {
   import { JSX } from 'solid-js'
   
   export interface MotionProps {
-    initial?: any
-    animate?: any
-    exit?: any
-    transition?: any
-    children?: any
-    style?: any
+    animate?: Record<string, any>
+    transition?: {
+      duration?: number
+      repeat?: number | boolean
+      ease?: string | number[]
+      delay?: number
+    }
     class?: string
+    style?: JSX.CSSProperties
+    children?: JSX.Element
   }
 
   export interface PresenceProps {

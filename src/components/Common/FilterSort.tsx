@@ -71,7 +71,7 @@ export const FilterSort: Component<FilterSortProps> = (props) => {
                         'gap': '0.5rem'
                     }}
                 >
-                    <Motion.div
+                    <Motion
                         animate={{
                             rotate: isExpanded() ? 180 : 0
                         }}
@@ -85,7 +85,7 @@ export const FilterSort: Component<FilterSortProps> = (props) => {
                                 'transform-origin': 'center'
                             }}
                         />
-                    </Motion.div>
+                    </Motion>
                     <Text 
                         size="lg" 
                         fontWeight="$medium" 
@@ -118,7 +118,7 @@ export const FilterSort: Component<FilterSortProps> = (props) => {
                         'hover:bg-primary-50': true
                     }}
                 >
-                    <Motion.div
+                    <Motion
                         animate={{
                             rotate: isExpanded() ? 180 : 0
                         }}
@@ -129,11 +129,11 @@ export const FilterSort: Component<FilterSortProps> = (props) => {
                         ) : (
                             <IoChevronDownOutline size={18} />
                         )}
-                    </Motion.div>
+                    </Motion>
                 </Button>
             </HStack>
 
-            <Motion.div
+            <Motion
                 animate={{
                     height: isExpanded() ? 'auto' : 0,
                     opacity: isExpanded() ? 1 : 0
@@ -277,7 +277,7 @@ export const FilterSort: Component<FilterSortProps> = (props) => {
                         </HStack>
                     </Box>
                 </VStack>
-            </Motion.div>
+            </Motion>
         </Box>
     );
 };

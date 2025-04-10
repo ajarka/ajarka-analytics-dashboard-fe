@@ -1,15 +1,12 @@
 import { Component } from 'solid-js';
-import { VStack, Spinner, Text } from '@hope-ui/solid';
+import {  Spinner, Text } from '@hope-ui/solid';
 import { useGithubData } from '../hooks/useGithubData';   
 import MappingTopology from '../components/MappingResource/MappingTopology';
 
 export const MappingResource: Component = () => {
     const {
-        data,
-        view,
-        setView,
-        memberDetailedStats,
-        overallStats
+        data, 
+        memberDetailedStats, 
     } = useGithubData();
 
   return (

@@ -1,12 +1,6 @@
-import { Component, For } from 'solid-js';
-import { Card } from '../UI/Card';
-import {
-    VStack,
-    HStack,
-    Text,
-    Box,
-    Avatar,
-    Tag
+import { Component, For } from 'solid-js'; 
+import { 
+    Avatar, 
 } from "@hope-ui/solid";
 import { TimelineEvent, TimelineEventType } from '../../types/github';
 import { marked } from 'marked';
@@ -28,18 +22,7 @@ export const ActivityTimeline: Component<ActivityTimelineProps> = (props) => {
         });
     };
 
-    const getEventColor = (type: TimelineEventType) => {
-        switch (type) {
-            case 'commit':
-                return 'purple';
-            case 'issue_comment':
-                return 'blue';
-            case 'pr_comment':
-                return 'green';
-            default:
-                return 'gray';
-        }
-    };
+    
 
     const getEventIcon = (type: TimelineEventType) => {
         switch (type) {

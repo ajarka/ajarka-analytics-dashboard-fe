@@ -1,7 +1,6 @@
 import { Component, JSX, createSignal } from 'solid-js';
 import { Navbar } from './Navbar';
-import { useLocation, A } from '@solidjs/router';
-import { HStack, Box } from '@hope-ui/solid';
+import { useLocation, A } from '@solidjs/router'; 
 import { 
     FaSolidChartLine, 
     FaSolidUsers, 

@@ -1,14 +1,10 @@
 import { Component, Show, createMemo, createSignal } from 'solid-js';
-import { useParams, A } from '@solidjs/router';
-import { Card } from '../components/UI/Card';
+import { useParams } from '@solidjs/router'; 
 import { useGithubData } from '../hooks/useGithubData';
-import { CompletionChart } from '../components/Charts/CompletionChart';
-import { Text, Box, VStack, HStack, Badge } from "@hope-ui/solid";
+import { CompletionChart } from '../components/Charts/CompletionChart'; 
 import { calculateTaskProgress } from '../utils/progressUtils';
-import { FilterSort } from '../components/Common/FilterSort';
-import { getDueStatusColor } from '../utils/dateUtils';
-import { StatusDistributionAnalysis } from '../components/Analysis/StatusDistributionAnalysis';
-import { Motion } from "@motionone/solid";
+import { FilterSort } from '../components/Common/FilterSort'; 
+import { StatusDistributionAnalysis } from '../components/Analysis/StatusDistributionAnalysis'; 
 
 interface ProjectStats {
     issues: any[];
@@ -251,14 +247,7 @@ export const ProjectDetail: Component = () => {
         return filtered;
     });
 
-    const formatDate = (date: string | undefined) => {
-        if (!date) return '';
-        return new Date(date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    };
+   
 
     const getDueDateStatus = (issue: any) => {
         if (issue.state === 'closed') return { status: 'safe', label: 'Completed', color: 'success' };
@@ -334,7 +323,7 @@ export const ProjectDetail: Component = () => {
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
                                 {Object.entries(getDueStats(filteredIssues())).map(([status, count]) => (
                                     <div class={`p-4 rounded-lg ${getDueStatusBg(status)} bg-opacity-20 transform hover:scale-105 transition-transform`}>
-                                        <div class={`text-2xl font-bold ${getDueStatusText(status)}`} style={baseStyle}>{count}</div>
+                                        <div class={`text-2xl font-bold ${getDueStatusText(status)}`} style={baseStyle}>{count as any}</div>
                                         <div class={`text-sm ${getDueStatusText(status)}`} style={baseStyle}>{getStatusText(status)}</div>
                                     </div>
                                 ))}

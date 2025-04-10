@@ -1,12 +1,10 @@
 import { Component, createMemo } from 'solid-js';
 import { Card } from '../UI/Card';
-import { VStack, HStack, Text, Box } from '@hope-ui/solid';
-import { UtilizationResult } from '../../types/UtilizationResult';
-import { WORKLOAD_THRESHOLDS } from '../../constants/workloadThresholds';
+import { VStack, HStack, Text, Box } from '@hope-ui/solid'; 
 
 interface CapacityPlanningProps {
-    utilization: UtilizationResult[];
-    thresholds: typeof WORKLOAD_THRESHOLDS;
+    utilization: any[];
+    thresholds: any;
     weeklyCapacity: number;
 }
 

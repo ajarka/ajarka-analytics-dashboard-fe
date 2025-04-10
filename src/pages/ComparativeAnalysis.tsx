@@ -1,8 +1,7 @@
 import { Component, createSignal, Show } from 'solid-js';
 import { VStack, Text, Box, Alert, AlertDescription } from "@hope-ui/solid";
 import { Card } from '../components/UI/Card';
-import { useGithubData } from '../hooks/useGithubData';
-import { OverviewCards } from '../components/Analysis/OverviewCards';
+import { useGithubData } from '../hooks/useGithubData'; 
 import { DetailedTrendAnalysis } from '../components/Analysis/DetailedTrendAnalysis';
 import { EnhancedTeamPerformance } from '../components/Analysis/EnhancedTeamPerformance';
 import { ActivityDistribution } from '../components/Analysis/ActivityDistribution';
@@ -127,8 +126,7 @@ export const ComparativeAnalysis: Component = () => {
             </Card>
 
             <Show when={analysisData()} fallback={
-                <Motion
-                    initial={{ opacity: 0, y: 20 }}
+                <Motion 
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                 >
@@ -153,8 +151,7 @@ export const ComparativeAnalysis: Component = () => {
             }>
                 {(analysis) => (
                     <Motion 
-                        class="space-y-8"
-                        initial={{ opacity: 0 }}
+                        class="space-y-8" 
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.5 }}
                     >

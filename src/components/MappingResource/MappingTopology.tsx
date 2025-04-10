@@ -1,6 +1,5 @@
 import { Component, createMemo, createSignal, For, onMount } from 'solid-js';
-import {
-  VStack,
+import { 
   HStack,
   Text,
   Box,
@@ -15,34 +14,12 @@ import {
   Button,
   Badge,
 } from '@hope-ui/solid';
-import { GithubIssue, GithubProject, MemberDetailedStats } from '../../types/github';
-import { FiUsers, FiGitBranch, FiActivity, FiBox } from 'solid-icons/fi';  
+import {  GithubProject, MemberDetailedStats } from '../../types/github';
+import {  FiActivity } from 'solid-icons/fi';  
 import { SolidFlow } from "solid-flow";
 import { calculateProgressStats } from '../Progress/progressUtils';
 import styles from "../../styles.module.css";      
-
-interface MemberData {
-  member: {
-    login: string;
-    avatar_url: string;
-  };
-  projectMap: Array<{
-    label: string;
-    href: string;
-  }>;
-  repoMap: Array<{
-    label: string;
-    href: string;
-  }>;
-  issues: Array<{
-    number: number;
-    title: string;
-    state: string;
-    repository: {
-      name: string;
-    };
-  }>;
-}
+ 
 
 interface ProjectIssue {
   number: number;
@@ -62,16 +39,14 @@ interface MappingTopologyProps {
   members: MemberDetailedStats[];
   projects: ExtendedGithubProject[];
 }
-  
-// Helper function to generate unique IDs
-const generateId = (prefix: string, index: number) => `${prefix}-${index}`;
+   
 
 const MappingTopology: Component<MappingTopologyProps> = (props) => {
-  const [projectFilter, setProjectFilter] = createSignal<string[]>([]);
-  const [repositoryFilter, setRepositoryFilter] = createSignal<string[]>([]);
-  const [contributionFilter, setContributionFilter] = createSignal<string[]>([]);
-  const [sortBy, setSortBy] = createSignal('progress');
-  const [searchQuery, setSearchQuery] = createSignal('');
+  const [projectFilter] = createSignal<string[]>([]);
+  const [repositoryFilter] = createSignal<string[]>([]);
+  const [contributionFilter] = createSignal<string[]>([]);
+  const [sortBy] = createSignal('progress');
+  const [searchQuery] = createSignal('');
   const [totalHeight, setTotalHeight] = createSignal(1000);
   const [selectedNode, setSelectedNode] = createSignal<any>(null);
   const [isModalOpen, setIsModalOpen] = createSignal(false);
@@ -254,7 +229,7 @@ const generateTopologyData = createMemo(() => {
     nodes.push(memberNode);
 
     // Calculate spacing
-    const maxReposPerProject = Math.max(...memberData.map(data => data.repositories.length), 1);
+    // const maxReposPerProject = Math.max(...memberData.map(data => data.repositories.length), 1);
     const nodeSpacing = 100; // Reduced from 80 to 60
 
     // Create project and repository nodes

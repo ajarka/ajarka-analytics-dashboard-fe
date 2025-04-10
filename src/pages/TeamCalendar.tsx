@@ -1,41 +1,65 @@
-import { Component } from 'solid-js';
-import { VStack, Spinner, Text, Skeleton } from '@hope-ui/solid';
+import { Component } from 'solid-js'; 
 import { useGithubData } from '../hooks/useGithubData';
 import Calendar from '../components/Calendar/Calendar';
+import { Motion } from '@motionone/solid';
 
 const CalendarSkeleton = () => {
   return (
     <div class="w-full space-y-4" style={{'font-family': 'Figtree'}}>
       {/* Filter & Sort Skeleton */}
-      <Skeleton>
+      <Motion
+                            animate={{ opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            class="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-xl p-4"
+                        >
         <div class="h-[60px] w-full bg-gray-200 rounded-lg"></div>
-      </Skeleton>
+      </Motion>
 
       {/* Calendar Header Skeleton */}
       <div class="flex justify-between items-center mb-4">
-        <Skeleton>
+      <Motion
+                            animate={{ opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            class="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-xl p-4"
+                        >
           <div class="h-[40px] w-[120px] bg-gray-200 rounded"></div>
-        </Skeleton>
-        <Skeleton>
+        </Motion>
+        <Motion
+                            animate={{ opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            class="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-xl p-4"
+                        >
           <div class="h-[40px] w-[200px] bg-gray-200 rounded"></div>
-        </Skeleton>
-        <Skeleton>
+        </Motion>
+        <Motion
+                            animate={{ opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            class="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-xl p-4"
+                        >
           <div class="h-[40px] w-[120px] bg-gray-200 rounded"></div>
-        </Skeleton>
+        </Motion>
       </div>
 
       {/* Calendar Grid Skeleton */}
       <div class="grid grid-cols-7 gap-2">
         {/* Calendar Days Header */}
         {Array(7).fill(0).map(() => (
-          <Skeleton>
+          <Motion
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          class="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-xl p-4"
+      >
             <div class="h-[30px] bg-gray-200 rounded"></div>
-          </Skeleton>
+          </Motion>
         ))}
         
         {/* Calendar Cells */}
         {Array(35).fill(0).map(() => (
-          <Skeleton>
+         <Motion
+         animate={{ opacity: [0.5, 1, 0.5] }}
+         transition={{ duration: 2, repeat: Infinity }}
+         class="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-xl p-4"
+     >
             <div class="h-[120px] bg-gray-200 rounded">
               {/* Event Placeholder */}
               <div class="p-2">
@@ -43,7 +67,7 @@ const CalendarSkeleton = () => {
                 <div class="h-[20px] w-1/2 bg-gray-300 rounded"></div>
               </div>
             </div>
-          </Skeleton>
+          </Motion>
         ))}
       </div>
     </div>

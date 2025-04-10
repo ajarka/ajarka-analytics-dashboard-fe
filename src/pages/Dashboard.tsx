@@ -1,12 +1,8 @@
 import { Component, createEffect, For, onMount } from 'solid-js';
 import { ProjectProgress } from '../components/Progress/ProjectProgress';
 import { RepositoryProgress } from '../components/Progress/RepositoryProgress';
-import { MemberProgress } from '../components/Progress/MemberProgress';
-import { IssueDetailCard } from '../components/Dashboard/IssueDetailCard';
-import { ActivityTimeline } from '../components/Dashboard/ActivityTimeline';
-import { ActivityAnalysis } from '../components/Dashboard/ActivityAnalysis';
-import { Tabs } from '../components/UI/Tabs';
-import { Card } from '../components/UI/Card';
+import { MemberProgress } from '../components/Progress/MemberProgress'; 
+import { ActivityTimeline } from '../components/Dashboard/ActivityTimeline'; 
 import { useGithubData } from '../hooks/useGithubData';
 import { useRateLimit } from '../context/RateLimitContext';
 import { Motion } from "@motionone/solid";
@@ -37,7 +33,7 @@ const DashboardSkeleton = () => {
             <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <For each={[1, 2, 3, 4]}>
                     {() => (
-                        <Motion.div
+                        <Motion
                             animate={{ opacity: [0.5, 1, 0.5] }}
                             transition={{ duration: 2, repeat: Infinity }}
                             class="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-xl p-4"
@@ -49,7 +45,7 @@ const DashboardSkeleton = () => {
                                     <div class="h-6 w-16 bg-gray-300 dark:bg-gray-600 rounded" />
                                 </div>
                             </div>
-                        </Motion.div>
+                        </Motion>
                     )}
                 </For>
             </div>
@@ -59,7 +55,7 @@ const DashboardSkeleton = () => {
                 <div class="flex p-2 space-x-4">
                     <For each={[1, 2, 3]}>
                         {() => (
-                            <Motion.div
+                            <Motion
                                 animate={{ opacity: [0.5, 1, 0.5] }}
                                 transition={{ duration: 2, repeat: Infinity }}
                                 class="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded"
@@ -74,7 +70,7 @@ const DashboardSkeleton = () => {
                 {/* Main Section Skeleton */}
                 <div class="lg:col-span-2">
                     <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl border border-blue-900/10 dark:border-blue-300/10 p-4 lg:p-6">
-                        <Motion.div
+                        <Motion
                             animate={{ opacity: [0.5, 1, 0.5] }}
                             transition={{ duration: 2, repeat: Infinity }}
                         >
@@ -92,13 +88,13 @@ const DashboardSkeleton = () => {
                                     )}
                                 </For>
                             </div>
-                        </Motion.div>
+                        </Motion>
                     </div>
                 </div>
 
                 {/* Recent Activity Skeleton */}
                 <div class="lg:col-span-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl border border-blue-900/10 dark:border-blue-300/10 p-4 lg:p-6">
-                    <Motion.div
+                    <Motion
                         animate={{ opacity: [0.5, 1, 0.5] }}
                         transition={{ duration: 2, repeat: Infinity }}
                     >
@@ -115,7 +111,7 @@ const DashboardSkeleton = () => {
                                 )}
                             </For>
                         </div>
-                    </Motion.div>
+                    </Motion>
                 </div>
             </div>
         </div>

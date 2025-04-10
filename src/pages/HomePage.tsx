@@ -5,7 +5,7 @@ import { For } from 'solid-js';
 
 // Tambahkan helper function untuk background
 const generateStars = (count: number) => {
-  return Array.from({ length: count }).map((_, i) => ({
+  return Array.from({ length: count }).map((_, ) => ({
     size: Math.random() * 3,
     x: Math.random() * 100,
     y: Math.random() * 100,
@@ -31,7 +31,7 @@ const HomePage: Component = () => {
       id: 1,
       title: "Dashboard Monitoring",
       subtitle: "Track and manage in real-time",
-      description: "Interactive map-based monitoring system for management and infrastructure tracking",
+      description: "Interactive Dashboard monitoring system for management and infrastructure tracking",
       icon: "M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z",
       route: "/dashboard",
       bgColor: "from-blue-600 to-indigo-600",
@@ -227,7 +227,7 @@ const HomePage: Component = () => {
   };
 
   onMount(() => {
-    const element = document.querySelector('.slides-container');
+    const element : any = document.querySelector('.slides-container');
     if (element) {
       element.addEventListener('touchstart', handleTouchStart, { passive: false });
       element.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -254,7 +254,7 @@ const HomePage: Component = () => {
         
         {/* Animated Stars */}
         <div class="absolute inset-0">
-          {stars.map((star, i) => (
+          {stars.map((star,) => (
             <div
               class="absolute rounded-full bg-white animate-twinkle"
               style={{
@@ -302,7 +302,7 @@ const HomePage: Component = () => {
         {/* Interactive Particles */}
         <div class="absolute inset-0">
           <div class="particles-container">
-            {Array.from({ length: 30 }).map((_, i) => (
+            {Array.from({ length: 30 }).map((_) => (
               <div
                 class="particle absolute"
                 style={{
@@ -346,10 +346,8 @@ const HomePage: Component = () => {
           <div class="relative w-full h-full top-[50vh] slides-container">
             <For each={menuItems}>
               {(item, index) => (
-                <Motion
-                  initial={{ opacity: 0, scale: 0.8, rotateY: 45 }}
-                  animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-                  exit={{ opacity: 0, scale: 0.8, rotateY: -45 }}
+                <Motion 
+                  animate={{ opacity: 1, scale: 1, rotateY: 0 }} 
                   transition={{ duration: 0.7 }}
                 >
                   <div 
@@ -393,8 +391,7 @@ const HomePage: Component = () => {
 
                     {/* Content with responsive spacing */}
                     <div class="relative h-full flex flex-col justify-center px-6 md:px-16 text-white">
-                      <Motion
-                        initial={{ opacity: 0, y: 20 }}
+                      <Motion 
                         animate={{ 
                           opacity: index() === currentSlide() ? 1 : 0, 
                           y: index() === currentSlide() ? 0 : 20 
@@ -450,10 +447,8 @@ const HomePage: Component = () => {
       {/* Navigation Overlay */}
       <Presence>
         {isNavigating() && (
-          <Motion
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+          <Motion 
+            animate={{ opacity: 1 }} 
             transition={{ duration: 0.5 }}
           >
             <div class="fixed inset-0 bg-black z-50" />

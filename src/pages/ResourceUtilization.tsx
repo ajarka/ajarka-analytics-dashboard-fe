@@ -1,6 +1,5 @@
 import { Component, createMemo, createSignal } from 'solid-js';
 import { useGithubData } from '../hooks/useGithubData';
-import { ResourceOverview } from '../components/Utilization/ResourceOverview';
 import { MemberLoadAnalysis } from '../components/Utilization/MemberLoadAnalysis';
 import { CapacityPlanning } from '../components/Utilization/CapacityPlanning';
 import { WorkloadDistribution } from '../components/Utilization/WorkloadDistribution';

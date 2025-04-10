@@ -23,7 +23,7 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Type Checking */
-    "types": ["vite/client", "node" , "@motionone/solid"],
+    "types": ["vite/client", "node"],
     "typeRoots": ["./node_modules/@types", "./src/types"],
     "paths": {
       "@/*": ["./src/*"]

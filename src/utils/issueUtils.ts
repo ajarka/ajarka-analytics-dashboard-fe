@@ -40,13 +40,13 @@ export const parseAssignmentComment = (comment: IssueComment): AssigneeFromComme
     return [];
 };
 
-export const getAdditionalAssignees = (comments: IssueComment[] = []) => {
+export const getAdditionalAssignees = (comments: any = []) => {
     const assigneesFromComments = comments
-        .filter(comment => comment.body.toLowerCase().trim().startsWith('/assign'))
-        .flatMap(comment => parseAssignmentComment(comment));
+        .filter((comment : any) => comment.body.toLowerCase().trim().startsWith('/assign'))
+        .flatMap((comment : any) => parseAssignmentComment(comment));
 
     const uniqueAssignees = new Map<string, AssigneeFromComment>();
-    assigneesFromComments.forEach(assignee => {
+    assigneesFromComments.forEach((assignee : any) => {
         if (!uniqueAssignees.has(assignee.login) ||
             new Date(assignee.assigned_at) > new Date(uniqueAssignees.get(assignee.login)!.assigned_at)) {
             uniqueAssignees.set(assignee.login, assignee);
