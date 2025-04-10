@@ -43,8 +43,12 @@ pipeline {
         stage('build image') {
             steps {
                 script {
+                    withCredentials([
+                        string(credentialsId: 'SST_GITHUB_TOKEN', variable: 'GITHUB_TOKEN')
+                    ])
+                    
                     try {
-                        sh "docker buildx build -t ${IMAGE} ."
+                        sh "docker buildx build --build-arg GITHUB_TOKEN=${GITHUB_TOKEN} -t ${IMAGE} ."
                     } catch (Exception e) {
                         writeFile file: LOG_FILE, text: "Error build image: ${e.toString()}\n"
                         error("❌ Gagal build Docker image.")
