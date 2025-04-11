@@ -8,7 +8,8 @@ import {
     FaSolidCalendar,
     FaSolidChevronRight,
     FaSolidChevronLeft,
-    FaSolidNetworkWired
+    FaSolidNetworkWired,
+    FaSolidTableList
 } from 'solid-icons/fa';
 
 interface MainLayoutProps {
@@ -198,6 +199,30 @@ export const MainLayout: Component<MainLayoutProps> = (props) => {
                             </div>
                             {!isCollapsed() && <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Mapping Resource</span>}
                         </A>
+                        <A 
+                            href="/resource-load"
+                            class={`
+                                flex items-center ${isCollapsed() ? 'justify-center' : 'space-x-3 px-4'} 
+                                py-3 rounded-xl
+                                transition-all duration-200
+                                group
+                                ${isActive('/resource-load') ? 
+                                    'bg-gradient-to-r from-[#2066ff] to-[#103cb8] text-white shadow-lg shadow-orange-900/20' : 
+                                    'hover:bg-gradient-to-r hover:from-red-500/10 hover:to-white-500/10 text-gray-700 dark:text-gray-300'}
+                            `}
+                        >
+                            <div class={`
+                                ${isCollapsed() ? 'w-10 h-10' : 'w-8 h-8'}
+                                flex items-center justify-center
+                                rounded-lg
+                                ${isActive('/resource-load') ? 'bg-white/20' : 'bg-red-500/10 group-hover:bg-red-500/20'}
+                                transition-all duration-300
+                                group-hover:scale-110
+                            `}>
+                                <FaSolidTableList class="w-4 h-4" />
+                            </div>
+                            {!isCollapsed() && <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Activity Overview</span>}
+                        </A>
                     </nav>
                 </aside>
 
@@ -347,6 +372,31 @@ export const MainLayout: Component<MainLayoutProps> = (props) => {
                                 <FaSolidNetworkWired class="w-4 h-4" />
                             </div>
                             <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Mapping Resource</span>
+                        </A>
+                        <A 
+                            href="/resource-load"
+                            class={`
+                                flex items-center space-x-3 px-4
+                                py-3 rounded-xl
+                                transition-all duration-200
+                                group
+                                ${isActive('/resource-load') ? 
+                                    'bg-gradient-to-r from-[#2066ff] to-[#103cb8] text-white shadow-lg shadow-orange-900/20' : 
+                                    'hover:bg-gradient-to-r hover:from-red-500/10 hover:to-white-500/10 text-gray-700 dark:text-gray-300'}
+                            `}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                            <div class={`
+                                w-8 h-8
+                                flex items-center justify-center
+                                rounded-lg
+                                ${isActive('/resource-load') ? 'bg-white/20' : 'bg-red-500/10 group-hover:bg-red-500/20'}
+                                transition-all duration-300
+                                group-hover:scale-110
+                            `}>
+                                <FaSolidTableList class="w-4 h-4" />
+                            </div>
+                            <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Activity Overview</span>
                         </A>
                     </nav>
                 </aside>

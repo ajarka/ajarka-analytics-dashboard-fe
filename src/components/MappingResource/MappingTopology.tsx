@@ -392,8 +392,7 @@ const handleNodesChange = (newNodes: any[]) => {
 };
 
 // Reset dragging state when mouse is released
-onMount(() => {
-  console.log("props data -> ", JSON.stringify(props.members));
+onMount(() => { 
   const handleMouseUp = () => {
     setIsDragging(false);
   };
@@ -402,8 +401,7 @@ onMount(() => {
   return () => window.removeEventListener('mouseup', handleMouseUp);
 });
 
-const handleNodeClick = (node: any) => {
-  console.log('Node clicked:', node);
+const handleNodeClick = (node: any) => { 
   setSelectedNode(node);
   setIsModalOpen(true);
 };
