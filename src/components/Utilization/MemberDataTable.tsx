@@ -4,21 +4,18 @@ import {
     Text,
     HStack,
     VStack,
-    Input,
-    Select,
+    Input, 
     Button,
     Badge,
-    Progress,
-    Divider,
-    IconButton,
-    Tooltip,
+    Progress, 
+    IconButton, 
     Tabs,
     TabList,
     Tab,
     TabPanel
 } from '@hope-ui/solid';
 import { exportToCSV } from '../../utils/exportUtils';
-import { FaSolidChevronDown, FaSolidGear, FaSolidFileExport, FaSolidMagnifyingGlass } from 'solid-icons/fa';
+import { FaSolidChevronDown,  FaSolidFileExport } from 'solid-icons/fa';
 
 interface MemberDataTableProps {
     utilization: any[];
@@ -29,7 +26,7 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
     const [searchQuery, setSearchQuery] = createSignal('');
     const [sortConfig, setSortConfig] = createSignal({ key: 'utilizationPercentage', direction: 'desc' });
     const [expandedRows, setExpandedRows] = createSignal<string[]>([]);
-    const [selectedColumns, setSelectedColumns] = createSignal([
+    const [selectedColumns] = createSignal([
         'member',
         'status',
         'utilizationPercentage',
@@ -102,20 +99,7 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
             default: return 'neutral';
         }
     };
-
-    const getUtilizationColor = (percentage: number) => {
-        if (percentage >= 90) return 'danger';
-        if (percentage >= 70) return 'warning';
-        if (percentage >= 40) return 'success';
-        return 'info';
-    };
-
-    const getEfficiencyColor = (percentage: number) => {
-        if (percentage >= 80) return 'success';
-        if (percentage >= 60) return 'primary';
-        if (percentage >= 40) return 'warning';
-        return 'danger';
-    };
+ 
 
     const exportData = () => {
         const headers = selectedColumns().map(col => 
