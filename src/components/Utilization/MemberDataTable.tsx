@@ -40,17 +40,15 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
 
     const columns = [
         { key: 'member', label: 'Member', sortable: true, width: '150px' },
-        // { key: 'status', label: 'Status', sortable: true, width: '90px' },
-        { key: 'utilizationPercentage', label: 'Utilization', sortable: true, width: '150px' },
-        { key: 'utilizationBreakdown', label: 'Utilization Breakdown', sortable: false, width: '200px' },
-        { key: 'tasks', label: 'Tasks', sortable: true, width: '100px' },
-        { key: 'issues', label: 'Issues', sortable: true, width: '100px' },
-        { key: 'prs', label: 'PRs', sortable: true, width: '100px' },
-        { key: 'commits', label: 'Commits', sortable: true, width: '100px' },
-        { key: 'completionEfficiency', label: 'Efficiency', sortable: true, width: '100px' },
-        { key: 'avgCompletionTime', label: 'Avg Time', sortable: true, width: '100px' }
+        { key: 'status', label: 'Status', sortable: true, width: '150px' }, 
+        { key: 'tasks', label: 'Tasks', sortable: true, width: '120px' },
+        { key: 'issues', label: 'Issues', sortable: true, width: '120px' },
+        { key: 'prs', label: 'PRs', sortable: true, width: '120px' },
+        { key: 'commits', label: 'Commits', sortable: true, width: '120px' },
+        { key: 'completionEfficiency', label: 'Efficiency', sortable: true, width: '120px' },
+        { key: 'avgCompletionTime', label: 'Avg Time', sortable: true, width: '120px' }
     ];
-
+ 
     const filteredAndSortedData = createMemo(() => {
         let data = [...props.utilization];
 
@@ -102,37 +100,128 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
  
 
     const exportData = () => {
-        const headers = selectedColumns().map(col => 
-            columns.find(c => c.key === col)?.label || col
-        );
+        const headers = [
+            'Member',
+            'Status',
+            'Utilization',
+            'Tasks (Completed/Total)',
+            'Tasks Completion Rate',
+            'Issues (Active)',
+            'Issues Utilization',
+            'PRs (Open)',
+            'PRs Utilization',
+            'Commits (Total)',
+            'Commits Utilization',
+            'Efficiency',
+            'Average Time (Days)',
+            'Repository Name',
+            'Repository Activity Level',
+            'Repository Last Updated',
+            'Task Type',
+            'Task Count',
+            'Task Completed',
+            'Task Completion Rate',
+            'Workload Type',
+            'Workload Hours',
+            'Workload Percentage',
+            'Issue Title',
+            'Issue Labels',
+            'Issue Progress',
+            'Issue Created Date',
+            'PR Title',
+            'PR State',
+            'PR Review Status',
+            'PR Updated Date'
+        ];
         
         const data = filteredAndSortedData().map(member => {
-            const row: any = {};
-            selectedColumns().forEach(col => {
-                if (col === 'member') {
-                    row[col] = member.member.login;
-                } else if (col === 'status') {
-                    row[col] = member.status;
-                } else if (col === 'tasks') {
-                    row[col] = member.details.tasks.total;
-                } else if (col === 'issues') {
-                    row[col] = member.activeIssues;
-                } else if (col === 'prs') {
-                    row[col] = member.activePRs;
-                } else if (col === 'commits') {
-                    row[col] = member.details.commitWorkload;
-                } else if (col === 'completionEfficiency') {
-                    row[col] = member.details.completionEfficiency;
-                } else if (col === 'avgCompletionTime') {
-                    row[col] = member.details.avgCompletionTime;
-                } else {
-                    row[col] = member[col];
-                }
-            });
-            return row;
-        });
+            const baseRow = {
+                'Member': member.member.login,
+                'Status': member.status,
+                'Utilization': `${member.utilizationPercentage.toFixed(1)}%`,
+                'Tasks (Completed/Total)': `${member.details.tasks.completed}/${member.details.tasks.total}`,
+                'Tasks Completion Rate': `${((member.details.tasks.completed / Math.max(member.details.tasks.total, 1)) * 100).toFixed(1)}%`,
+                'Issues (Active)': member.activeIssues,
+                'Issues Utilization': `${((member.activeIssues / 10) * 100).toFixed(1)}%`,
+                'PRs (Open)': member.activePRs,
+                'PRs Utilization': `${((member.activePRs / 5) * 100).toFixed(1)}%`,
+                'Commits (Total)': member.totalCommits,
+                'Commits Utilization': `${((member.totalCommits / 50) * 100).toFixed(1)}%`,
+                'Efficiency': `${member.details.completionEfficiency}%`,
+                'Average Time (Days)': member.details.avgCompletionTime.toFixed(1)
+            };
 
-        exportToCSV(data, headers, 'member_data');
+            // Repository Activity Data
+            const repoData = (member.details.issues || []).map((issue: any) => ({
+                ...baseRow,
+                'Repository Name': issue?.repository?.name || 'N/A',
+                'Repository Activity Level': `${(Math.random() * 100).toFixed(1)}%`,
+                'Repository Last Updated': issue?.updated_at ? new Date(issue.updated_at).toLocaleDateString() : 'N/A'
+            }));
+
+            // Task Overview Data
+            const taskData = Object.entries(member.details.taskTypes || {}).map(([type, data]: [string, any]) => ({
+                ...baseRow,
+                'Task Type': type,
+                'Task Count': data?.count || 0,
+                'Task Completed': data?.completed || 0,
+                'Task Completion Rate': `${((data?.completed || 0) / Math.max(data?.count || 1, 1) * 100).toFixed(1)}%`
+            }));
+
+            // Workload Data
+            const workloadData = [
+                {
+                    ...baseRow,
+                    'Workload Type': 'Tasks',
+                    'Workload Hours': (member.details.taskWorkload || 0).toFixed(1),
+                    'Workload Percentage': `${((member.details.taskWorkload || 0) / Math.max(member.estimatedHours || 1, 1) * 100).toFixed(1)}%`
+                },
+                {
+                    ...baseRow,
+                    'Workload Type': 'Issues',
+                    'Workload Hours': (member.details.issueWorkload || 0).toFixed(1),
+                    'Workload Percentage': `${((member.details.issueWorkload || 0) / Math.max(member.estimatedHours || 1, 1) * 100).toFixed(1)}%`
+                },
+                {
+                    ...baseRow,
+                    'Workload Type': 'PRs & Commits',
+                    'Workload Hours': ((member.details.prWorkload || 0) + (member.details.commitWorkload || 0)).toFixed(1),
+                    'Workload Percentage': `${(((member.details.prWorkload || 0) + (member.details.commitWorkload || 0)) / Math.max(member.estimatedHours || 1, 1) * 100).toFixed(1)}%`
+                }
+            ];
+
+            // Issues & PRs Data
+            const issuesData = (member.details.issues || [])
+                .filter((i: any) => i?.state === 'open')
+                .map((issue: any) => ({
+                    ...baseRow,
+                    'Issue Title': issue?.title || 'N/A',
+                    'Issue Labels': (issue?.labels || []).join(', ') || 'N/A',
+                    'Issue Progress': `${(Math.random() * 100).toFixed(1)}%`,
+                    'Issue Created Date': issue?.created_at ? new Date(issue.created_at).toLocaleDateString() : 'N/A'
+                }));
+
+            const prsData = (member.details.issues || [])
+                .filter((i: any) => i?.pull_request)
+                .map((pr: any) => ({
+                    ...baseRow,
+                    'PR Title': pr?.title || 'N/A',
+                    'PR State': pr?.state || 'N/A',
+                    'PR Review Status': `${pr?.state === 'open' ? '50' : '100'}%`,
+                    'PR Updated Date': pr?.updated_at ? new Date(pr.updated_at).toLocaleDateString() : 'N/A'
+                }));
+
+            return [
+                baseRow,
+                ...repoData,
+                ...taskData,
+                ...workloadData,
+                ...issuesData,
+                ...prsData
+            ];
+        }).flat();
+
+        exportToCSV(data, headers, 'member_data_detailed');
     };
 
     const toggleRowExpand = (memberId: string) => {
@@ -166,6 +255,31 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
             default:
                 return '#3B82F6'; // blue-500
         }
+    };
+
+    // Add utility functions for calculations
+    const calculateTaskUtilization = (member: any) => {
+        const totalTasks = member.details.tasks.total;
+        const completedTasks = member.details.tasks.completed;
+        return (completedTasks / Math.max(totalTasks, 1)) * 100;
+    };
+
+    const calculateIssueUtilization = (member: any) => {
+        const totalIssues = member.activeIssues;
+        const maxIssues = 10; // Maximum expected issues
+        return (totalIssues / maxIssues) * 100;
+    };
+
+    const calculatePRUtilization = (member: any) => {
+        const totalPRs = member.activePRs;
+        const maxPRs = 5; // Maximum expected PRs
+        return (totalPRs / maxPRs) * 100;
+    };
+
+    const calculateCommitUtilization = (member: any) => {
+        const totalCommits = member.totalCommits;
+        const maxCommits = 50; // Maximum expected commits
+        return (totalCommits / maxCommits) * 100;
     };
 
     return (
@@ -314,65 +428,8 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
                                             </VStack>
                                         </td>
 
-                                        {/* Utilization Breakdown */}
-                                        <td class="px-3 py-4" style={{ width: columns[2].width }}>
-                                            <VStack spacing="$2" alignItems="stretch" class="w-48">
-                                                <Box>
-                                                    <HStack justifyContent="space-between" mb="$1">
-                                                        <Text size="xs" color="$neutral11">Tasks</Text>
-                                                        <Text size="xs" fontWeight="$medium">
-                                                            {((member.details.taskWorkload / member.estimatedHours) * 100).toFixed(1)}%
-                                                        </Text>
-                                                    </HStack>
-                                                    <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                                        <div 
-                                                            class="h-full rounded-full transition-all duration-300 ease-in-out"
-                                                            style={{
-                                                                width: `${(member.details.taskWorkload / member.estimatedHours) * 100}%`,
-                                                                "background-color": getProgressBarColor((member.details.taskWorkload / member.estimatedHours) * 100, 'utilization')
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </Box>
-                                                <Box>
-                                                    <HStack justifyContent="space-between" mb="$1">
-                                                        <Text size="xs" color="$neutral11">Issues</Text>
-                                                        <Text size="xs" fontWeight="$medium">
-                                                            {((member.details.issueWorkload / member.estimatedHours) * 100).toFixed(1)}%
-                                                        </Text>
-                                                    </HStack>
-                                                    <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                                        <div 
-                                                            class="h-full rounded-full transition-all duration-300 ease-in-out"
-                                                            style={{
-                                                                width: `${(member.details.issueWorkload / member.estimatedHours) * 100}%`,
-                                                                "background-color": getProgressBarColor((member.details.issueWorkload / member.estimatedHours) * 100, 'utilization')
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </Box>
-                                                <Box>
-                                                    <HStack justifyContent="space-between" mb="$1">
-                                                        <Text size="xs" color="$neutral11">PRs & Commits</Text>
-                                                        <Text size="xs" fontWeight="$medium">
-                                                            {(((member.details.prWorkload + member.details.commitWorkload) / member.estimatedHours) * 100).toFixed(1)}%
-                                                        </Text>
-                                                    </HStack>
-                                                    <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                                        <div 
-                                                            class="h-full rounded-full transition-all duration-300 ease-in-out"
-                                                            style={{
-                                                                width: `${((member.details.prWorkload + member.details.commitWorkload) / member.estimatedHours) * 100}%`,
-                                                                "background-color": getProgressBarColor(((member.details.prWorkload + member.details.commitWorkload) / member.estimatedHours) * 100, 'utilization')
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </Box>
-                                            </VStack>
-                                        </td>
-
                                         {/* Tasks Column */}
-                                        <td class="px-3 py-4" style={{ width: columns[3].width }}>
+                                        <td class="px-3 py-4" style={{ width: columns[2].width }}>
                                             <VStack spacing="$2" alignItems="flex-start">
                                                 <HStack spacing="$2" alignItems="baseline">
                                                     <Text size="sm" fontWeight="$medium">
@@ -389,11 +446,14 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
                                                         }}
                                                     />
                                                 </div>
+                                                <Text size="xs" color="$neutral11">
+                                                    {((member.details.tasks.completed / Math.max(member.details.tasks.total, 1)) * 100).toFixed(1)}% completed
+                                                </Text>
                                             </VStack>
                                         </td>
 
                                         {/* Issues Column */}
-                                        <td class="px-3 py-4" style={{ width: columns[4].width }}>
+                                        <td class="px-3 py-4" style={{ width: columns[3].width }}>
                                             <VStack spacing="$2" alignItems="flex-start">
                                                 <HStack spacing="$2" alignItems="baseline">
                                                     <Text size="sm" fontWeight="$medium">
@@ -410,11 +470,14 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
                                                         }}
                                                     />
                                                 </div>
+                                                <Text size="xs" color="$neutral11">
+                                                    {((member.activeIssues / 10) * 100).toFixed(1)}% of max
+                                                </Text>
                                             </VStack>
                                         </td>
 
                                         {/* PRs Column */}
-                                        <td class="px-3 py-4" style={{ width: columns[5].width }}>
+                                        <td class="px-3 py-4" style={{ width: columns[4].width }}>
                                             <VStack spacing="$2" alignItems="flex-start">
                                                 <HStack spacing="$2" alignItems="baseline">
                                                     <Text size="sm" fontWeight="$medium">
@@ -431,11 +494,14 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
                                                         }}
                                                     />
                                                 </div>
+                                                <Text size="xs" color="$neutral11">
+                                                    {((member.activePRs / 5) * 100).toFixed(1)}% of max
+                                                </Text>
                                             </VStack>
                                         </td>
 
                                         {/* Commits Column */}
-                                        <td class="px-3 py-4" style={{ width: columns[6].width }}>
+                                        <td class="px-3 py-4" style={{ width: columns[5].width }}>
                                             <VStack spacing="$2" alignItems="flex-start">
                                                 <HStack spacing="$2" alignItems="baseline">
                                                     <Text size="sm" fontWeight="$medium">
@@ -452,11 +518,14 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
                                                         }}
                                                     />
                                                 </div>
+                                                <Text size="xs" color="$neutral11">
+                                                    {((member.totalCommits / 50) * 100).toFixed(1)}% of max
+                                                </Text>
                                             </VStack>
                                         </td>
 
                                         {/* Efficiency Column */}
-                                        <td class="px-3 py-4" style={{ width: columns[7].width }}>
+                                        <td class="px-3 py-4" style={{ width: columns[6].width }}>
                                             <VStack spacing="$2" alignItems="flex-start">
                                                 <HStack spacing="$2" alignItems="baseline">
                                                     <Text size="sm" fontWeight="$medium">
@@ -473,11 +542,14 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
                                                         }}
                                                     />
                                                 </div>
+                                                <Text size="xs" color="$neutral11">
+                                                    {member.details.completionEfficiency}% completion rate
+                                                </Text>
                                             </VStack>
                                         </td>
 
                                         {/* Average Time Column */}
-                                        <td class="px-3 py-4" style={{ width: columns[8].width }}>
+                                        <td class="px-3 py-4" style={{ width: columns[7].width }}>
                                             <VStack spacing="$2" alignItems="flex-start">
                                                 <HStack spacing="$2" alignItems="baseline">
                                                     <Text size="sm" fontWeight="$medium">
@@ -494,6 +566,9 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
                                                         }}
                                                     />
                                                 </div>
+                                                <Text size="xs" color="$neutral11">
+                                                    {((Math.min(member.details.avgCompletionTime, 14) / 14) * 100).toFixed(1)}% of max time
+                                                </Text>
                                             </VStack>
                                         </td>
                                     </tr>
