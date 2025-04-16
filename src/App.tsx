@@ -17,6 +17,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import HomePage from './pages/HomePage';
 import MappingResource from './pages/MappingResource';
 import { ResourceLoad } from './pages/ResourceLoad';
+import ProjectTime from './pages/ProjectTime';
 
 const App: Component = () => {
   const { refetch } = useGithubData();
@@ -100,6 +101,13 @@ const App: Component = () => {
                   <ResourceLoad />
                 </MainLayout>
               )} />
+
+<Route path="/project-time" component={() => (
+                <MainLayout onRefresh={handleRefresh} lastUpdate={lastUpdate}>
+                  <ProjectTime />
+                </MainLayout>
+              )} />
+
             </Router>
           </RateLimitProvider>
         </AuthProvider>

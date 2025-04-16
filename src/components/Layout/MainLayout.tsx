@@ -9,7 +9,8 @@ import {
     FaSolidChevronRight,
     FaSolidChevronLeft,
     FaSolidNetworkWired,
-    FaSolidTableList
+    FaSolidTableList,
+    FaSolidBusinessTime
 } from 'solid-icons/fa';
 
 interface MainLayoutProps {
@@ -51,26 +52,38 @@ export const MainLayout: Component<MainLayoutProps> = (props) => {
                     hidden lg:block
                     z-30
                 `}>
-                    {/* Collapse/Expand Button - Dipindah ke border */}
+                    {/* Collapse/Expand Button - Repositioned to top */}
                     <button
                         onClick={() => setIsCollapsed(!isCollapsed())}
                         class="
-                            absolute top-[70%] -translate-y-1/2 -right-3
-                            w-6 h-12
+                            absolute top-6 -right-2.5
+                            w-9 h-10
                             flex items-center justify-center
-                            rounded-full
-                            bg-gradient-to-r from-blue-600 to-purple-600
-                            dark:from-blue-500 dark:to-purple-500
+                            rounded-l-full rounded-r-none
+                            bg-gradient-to-r from-blue-600 to-blue-600
+                            dark:from-blue-500 dark:to-blue-500
                             text-white
                             shadow-lg shadow-blue-900/20
                             hover:scale-110
                             transition-all duration-200
                             border border-white/20
-                        " style={{'width': '4vw'}}
+                            overflow-hidden
+                            before:content-['']
+                            before:absolute
+                            before:w-full
+                            before:h-full
+                            before:rounded-r-full
+                            before:bg-gradient-to-r
+                            before:from-blue-600
+                            before:to-blue-600
+                            before:dark:from-blue-500
+                            before:dark:to-blue-500
+                            before:-translate-x-1/2
+                        "
                     >
                         {isCollapsed() ? 
-                            <FaSolidChevronRight class="w-3 h-3" /> : 
-                            <FaSolidChevronLeft class="w-3 h-3" />
+                            <FaSolidChevronRight style={{'font-size' : '10px'}} class=" relative z-10" /> : 
+                            <FaSolidChevronLeft style={{'font-size' : '10px'}} class=" relative z-10" />
                         }
                     </button>
 
@@ -223,6 +236,32 @@ export const MainLayout: Component<MainLayoutProps> = (props) => {
                             </div>
                             {!isCollapsed() && <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Activity Overview</span>}
                         </A>
+
+                        <A 
+                            href="/project-time"
+                            class={`
+                                flex items-center ${isCollapsed() ? 'justify-center' : 'space-x-3 px-4'} 
+                                py-3 rounded-xl
+                                transition-all duration-200
+                                group
+                                ${isActive('/project-time') ? 
+                                    'bg-gradient-to-r from-[#2066ff] to-[#103cb8] text-white shadow-lg shadow-orange-900/20' : 
+                                    'hover:bg-gradient-to-r hover:from-gray-500/10 hover:to-white-500/10 text-gray-700 dark:text-gray-300'}
+                            `}
+                        >
+                            <div class={`
+                                ${isCollapsed() ? 'w-10 h-10' : 'w-8 h-8'}
+                                flex items-center justify-center
+                                rounded-lg
+                                ${isActive('/project-time') ? 'bg-white/20' : 'bg-gray-500/10 group-hover:bg-gray-500/20'}
+                                transition-all duration-300
+                                group-hover:scale-110
+                            `}>
+                                <FaSolidBusinessTime class="w-4 h-4" />
+                            </div>
+                            {!isCollapsed() && <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Project Time</span>}
+                        </A>
+                        
                     </nav>
                 </aside>
 
@@ -397,6 +436,32 @@ export const MainLayout: Component<MainLayoutProps> = (props) => {
                                 <FaSolidTableList class="w-4 h-4" />
                             </div>
                             <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Activity Overview</span>
+                        </A>
+
+                        <A 
+                            href="/project-time"
+                            class={`
+                                flex items-center space-x-3 px-4
+                                py-3 rounded-xl
+                                transition-all duration-200
+                                group
+                                ${isActive('/project-time') ? 
+                                    'bg-gradient-to-r from-[#2066ff] to-[#103cb8] text-white shadow-lg shadow-orange-900/20' : 
+                                    'hover:bg-gradient-to-r hover:from-gray-500/10 hover:to-white-500/10 text-gray-700 dark:text-gray-300'}
+                            `}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                            <div class={`
+                                w-8 h-8
+                                flex items-center justify-center
+                                rounded-lg
+                                ${isActive('/project-time') ? 'bg-white/20' : 'bg-gray-500/10 group-hover:bg-gray-500/20'}
+                                transition-all duration-300
+                                group-hover:scale-110
+                            `}>
+                                <FaSolidBusinessTime class="w-4 h-4" />
+                            </div>
+                            <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Project Time</span>
                         </A>
                     </nav>
                 </aside>
