@@ -1,6 +1,6 @@
 import { Component, createMemo, For, createSignal, Show } from 'solid-js';
 import { Badge, Box, Text, HStack, VStack, Tooltip, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalCloseButton } from '@hope-ui/solid';
-import { formatDistance, format, differenceInDays, isValid, parseISO, isDate } from 'date-fns';
+import { formatDistance, format, differenceInDays, isValid, parseISO } from 'date-fns';
 import { GithubProject, GithubIssue } from '../types/github';
 import { FaSolidChevronDown, FaSolidChevronRight, FaSolidCode, FaSolidClock, FaSolidCircle, FaSolidExclamation } from 'solid-icons/fa';
 
@@ -26,7 +26,7 @@ interface RepositoryTimeline {
 export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props) => {
     const [expandedProjects, setExpandedProjects] = createSignal<Set<number>>(new Set());
     const [expandedRepo, setExpandedRepo] = createSignal<string | null>(null);
-    const [selectedRepo, setSelectedRepo] = createSignal<RepositoryTimeline | null>(null);
+    const [selectedRepo] = createSignal<RepositoryTimeline | null>(null);
     const [isModalOpen, setIsModalOpen] = createSignal(false);
 
     const toggleProject = (projectId: number) => {
@@ -214,11 +214,7 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
         }))
     );
 
-    const openRepoDetails = (repo: RepositoryTimeline) => {
-        setSelectedRepo(repo);
-        setIsModalOpen(true);
-    };
-
+    
     return (
         <Box class="w-full overflow-x-auto" style={{'font-family': 'Figtree'}}>
             <table class="w-full border-collapse text-sm">

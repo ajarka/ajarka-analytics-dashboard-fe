@@ -26,18 +26,7 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
     const [searchQuery, setSearchQuery] = createSignal('');
     const [sortConfig, setSortConfig] = createSignal({ key: 'utilizationPercentage', direction: 'desc' });
     const [expandedRows, setExpandedRows] = createSignal<string[]>([]);
-    const [selectedColumns] = createSignal([
-        'member',
-        'status',
-        'utilizationPercentage',
-        'tasks',
-        'issues',
-        'prs',
-        'commits',
-        'completionEfficiency',
-        'avgCompletionTime'
-    ]);
-
+    
     const columns = [
         { key: 'member', label: 'Member', sortable: true, width: '150px' },
         { key: 'status', label: 'Status', sortable: true, width: '150px' }, 
@@ -257,30 +246,10 @@ const MemberDataTable: Component<MemberDataTableProps> = (props) => {
         }
     };
 
-    // Add utility functions for calculations
-    const calculateTaskUtilization = (member: any) => {
-        const totalTasks = member.details.tasks.total;
-        const completedTasks = member.details.tasks.completed;
-        return (completedTasks / Math.max(totalTasks, 1)) * 100;
-    };
+   
+ 
 
-    const calculateIssueUtilization = (member: any) => {
-        const totalIssues = member.activeIssues;
-        const maxIssues = 10; // Maximum expected issues
-        return (totalIssues / maxIssues) * 100;
-    };
-
-    const calculatePRUtilization = (member: any) => {
-        const totalPRs = member.activePRs;
-        const maxPRs = 5; // Maximum expected PRs
-        return (totalPRs / maxPRs) * 100;
-    };
-
-    const calculateCommitUtilization = (member: any) => {
-        const totalCommits = member.totalCommits;
-        const maxCommits = 50; // Maximum expected commits
-        return (totalCommits / maxCommits) * 100;
-    };
+    
 
     return (
         <Box

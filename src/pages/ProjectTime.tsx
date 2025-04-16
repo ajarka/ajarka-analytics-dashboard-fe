@@ -5,11 +5,7 @@ import { ProjectTimelineTable } from '../components/ProjectTimelineTable';
 
 export const ProjectTime: Component = () => {
     const {
-        data,
-        view,
-        setView,
-        memberDetailedStats,
-        overallStats
+        data, 
     } = useGithubData();
 
     const { isRateLimited, rateLimitData, checkAndUpdateRateLimit } = useRateLimit();
