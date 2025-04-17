@@ -1,7 +1,7 @@
 import { Component, createEffect, onMount } from 'solid-js';
 import { useGithubData } from '../hooks/useGithubData';
 import { useRateLimit } from '../context/RateLimitContext';
-import { ProjectTimelineTable } from '../components/ProjectTimelineTable';
+import { ProjectTimelineTable } from '../components/ProjectTime/ProjectTimelineTable';
 
 export const ProjectTime: Component = () => {
     const {
