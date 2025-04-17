@@ -50,6 +50,7 @@ export interface GithubIssue {
     updated_at: string;
     start_date?: string;
     due_date?: string;
+    html_url: string;
     repository: {
         name: string;
         full_name: string;
@@ -184,7 +185,7 @@ export interface MemberDetailedStats extends MemberStats {
 
 export type ViewType = 'members' | 'projects' | 'repositories';
 
-export type TimelineEventType = 'commit' | 'issue_comment' | 'pr_comment';
+export type TimelineEventType = 'commit' | 'issue_comment' | 'pr_comment' | 'pull_request' | 'push';
 
 export interface TimelineEvent {
     id: string;

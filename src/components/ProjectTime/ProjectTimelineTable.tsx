@@ -3,6 +3,7 @@ import { Badge, Box, Text, HStack, VStack, Tooltip, Modal, ModalOverlay, ModalCo
 import { formatDistance, format, differenceInDays, isValid, parseISO } from 'date-fns';
 import { GithubProject, GithubIssue } from '../../types/github';
 import { FaSolidChevronDown, FaSolidChevronRight, FaSolidCode, FaSolidClock, FaSolidCircle, FaSolidExclamation, FaSolidLink,  FaSolidSort, FaSolidSortUp, FaSolidSortDown } from 'solid-icons/fa';
+import { useGithubData } from '../../hooks/useGithubData';
 
 interface ProjectTimelineTableProps {
     projects: GithubProject[];
@@ -21,6 +22,34 @@ interface RepositoryTimeline {
     inProgressIssues: number;
     progress: number;
     isOverdue: boolean;
+    members: Array<{
+        login: string;
+        avatar_url: string;
+        contributions: number;
+        firstContribution: string;
+        lastContribution: string;
+        totalTimeSpent: string;
+        activities: Array<{
+            id: string;
+            type: 'commit' | 'issue_comment' | 'pr_comment' | 'pull_request' | 'push';
+            title: string;
+            content: string;
+            timestamp: string;
+            linkUrl: string;
+        }>;
+    }>;
+    recentActivities: Array<{
+        id: string;
+        type: 'commit' | 'issue_comment' | 'pr_comment' | 'pull_request' | 'push';
+        title: string;
+        content: string;
+        author: {
+            login: string;
+            avatar_url: string;
+        };
+        timestamp: string;
+        linkUrl: string;
+    }>;
 }
 
 export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props) => {
@@ -34,6 +63,9 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
     const [sortConfig, setSortConfig] = createSignal<{ key: string; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
     const [currentPage, setCurrentPage] = createSignal(1);
     const itemsPerPage = 10;
+
+    // Get real-time data from useGithubData hook
+    const { data: githubData } = useGithubData();
 
     const toggleProject = (projectId: number) => {
         const current = new Set(expandedProjects());
@@ -53,6 +85,198 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
     const getRepositoryTimeline = (repoName: string, projectIssues: GithubIssue[]): RepositoryTimeline => {
         const repoIssues = projectIssues.filter(issue => issue.repository.name === repoName);
         
+        // Get all timeline events for this repository from githubData
+        const allTimelineEvents = githubData()?.timelineEvents || [];
+        const repoEvents = allTimelineEvents.filter(event => 
+            event.repository === repoName
+        );
+
+        // Get all members from the repository including contributors from commits, PRs, and issues
+        const repoMembers = new Map<string, {
+            login: string;
+            avatar_url: string;
+            contributions: number;
+            firstContribution: string;
+            lastContribution: string;
+            totalTimeSpent: string;
+            activities: Array<{
+                id: string;
+                type: 'commit' | 'issue_comment' | 'pr_comment' | 'pull_request' | 'push';
+                title: string;
+                content: string;
+                timestamp: string;
+                linkUrl: string;
+            }>;
+        }>();
+
+        // First process all issue assignments and comments
+        repoIssues.forEach(issue => {
+            // Track issue assignee
+            if (issue.assignee) {
+                const member = repoMembers.get(issue.assignee.login) || {
+                    login: issue.assignee.login,
+                    avatar_url: issue.assignee.avatar_url,
+                    contributions: 0,
+                    firstContribution: issue.created_at,
+                    lastContribution: issue.updated_at,
+                    totalTimeSpent: '0',
+                    activities: []
+                };
+
+                // Add issue assignment as an activity
+                member.activities.push({
+                    id: `issue-${issue.number}`,
+                    type: 'issue_comment',
+                    title: `Assigned to issue #${issue.number}`,
+                    content: issue.title,
+                    timestamp: issue.created_at,
+                    linkUrl: issue.html_url
+                });
+
+                // Update first and last contribution dates
+                if (new Date(issue.created_at) < new Date(member.firstContribution)) {
+                    member.firstContribution = issue.created_at;
+                }
+                if (new Date(issue.updated_at) > new Date(member.lastContribution)) {
+                    member.lastContribution = issue.updated_at;
+                }
+
+                member.contributions += 1; // Count assignment as a contribution
+                repoMembers.set(issue.assignee.login, member);
+            }
+
+            // Track issue comments
+            if (issue.comments) {
+                issue.comments.forEach(comment => {
+                    const member = repoMembers.get(comment.user.login) || {
+                        login: comment.user.login,
+                        avatar_url: comment.user.avatar_url,
+                        contributions: 0,
+                        firstContribution: comment.created_at,
+                        lastContribution: comment.created_at,
+                        totalTimeSpent: '0',
+                        activities: []
+                    };
+
+                    // Add comment as an activity
+                    member.activities.push({
+                        id: `comment-${comment.id}`,
+                        type: 'issue_comment',
+                        title: `Commented on issue #${issue.number}`,
+                        content: comment.body,
+                        timestamp: comment.created_at,
+                        linkUrl: comment.html_url
+                    });
+
+                    // Update first and last contribution dates
+                    if (new Date(comment.created_at) < new Date(member.firstContribution)) {
+                        member.firstContribution = comment.created_at;
+                    }
+                    if (new Date(comment.created_at) > new Date(member.lastContribution)) {
+                        member.lastContribution = comment.created_at;
+                    }
+
+                    member.contributions += 0.5; // Comments count as 0.5 contribution
+                    repoMembers.set(comment.user.login, member);
+                });
+            }
+        });
+
+        // Then process all timeline events
+        repoEvents.forEach(event => {
+            if (!event.author) return;
+
+            const member = repoMembers.get(event.author.login) || {
+                login: event.author.login,
+                avatar_url: event.author.avatar_url,
+                contributions: 0,
+                firstContribution: event.timestamp,
+                lastContribution: event.timestamp,
+                totalTimeSpent: '0',
+                activities: []
+            };
+
+            // Add activity with proper type
+            member.activities.push({
+                id: event.id,
+                type: event.type,
+                title: event.title,
+                content: event.content,
+                timestamp: event.timestamp,
+                linkUrl: event.linkUrl
+            });
+
+            // Increment contributions based on event type
+            switch (event.type) {
+                case 'commit':
+                    member.contributions += 1;
+                    break;
+                case 'pull_request':
+                    member.contributions += 2;
+                    break;
+                case 'issue_comment':
+                case 'pr_comment':
+                    member.contributions += 0.5;
+                    break;
+                case 'push':
+                    member.contributions += 1;
+                    break;
+                default:
+                    member.contributions += 1;
+            }
+
+            // Update first and last contribution dates
+            if (new Date(event.timestamp) < new Date(member.firstContribution)) {
+                member.firstContribution = event.timestamp;
+            }
+            if (new Date(event.timestamp) > new Date(member.lastContribution)) {
+                member.lastContribution = event.timestamp;
+            }
+
+            repoMembers.set(event.author.login, member);
+        });
+
+        // Sort activities by timestamp for each member
+        repoMembers.forEach(member => {
+            member.activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        });
+
+        // Calculate total time spent for each member
+        repoMembers.forEach(member => {
+            const activityDates = member.activities.map(a => new Date(a.timestamp));
+            const activitiesByDay = new Map<string, number>();
+            
+            activityDates.forEach(date => {
+                const dayKey = date.toISOString().split('T')[0];
+                activitiesByDay.set(dayKey, (activitiesByDay.get(dayKey) || 0) + 1);
+            });
+
+            let totalHours = 0;
+            activitiesByDay.forEach((activityCount) => {
+                totalHours += activityCount > 1 ? 8 : 4; // Full day if multiple activities, half day if single activity
+            });
+
+            const totalDays = Math.ceil(totalHours / 8);
+            member.totalTimeSpent = `${totalDays} days`;
+        });
+
+        // Get recent activities for the repository
+        const recentActivities = repoEvents
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .slice(0, 5)
+            .map(event => ({
+                id: event.id,
+                type: event.type,
+                title: event.title,
+                content: event.content,
+                author: {
+                    login: event.author.login,
+                    avatar_url: event.author.avatar_url
+                },
+                timestamp: event.timestamp,
+                linkUrl: event.linkUrl
+            }));
+
         const safeParseDate = (dateStr: string | null | undefined): Date | null => {
             if (!dateStr) return null;
             try {
@@ -129,7 +353,9 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
             completedIssues,
             inProgressIssues,
             progress,
-            isOverdue: plannedCompletionDate ? new Date() > plannedCompletionDate : false
+            isOverdue: plannedCompletionDate ? new Date() > plannedCompletionDate : false,
+            members: Array.from(repoMembers.values()),
+            recentActivities
         };
     };
 
@@ -595,6 +821,7 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
                                                                                                 </div>
                                                                                             </div>
                                                                                         </div>
+
                                                                                         <div class="mt-4">
                                                                                             <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                                                                                 <div 
@@ -611,6 +838,92 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
                                                                                                 />
                                                                                             </div>
                                                                                         </div>
+
+                                                                                        {/* Member Details Section */}
+                                                                                        <div class="mt-6">
+                                                                                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Team Members</h4>
+                                                                                            <div class="space-y-4">
+                                                                                                <For each={repo.members}>
+                                                                                                    {(member) => (
+                                                                                                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+                                                                                                            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                                                                                                                <div class="flex items-center space-x-3">
+                                                                                                                    <img 
+                                                                                                                        src={member.avatar_url} 
+                                                                                                                        alt={member.login}
+                                                                                                                        class="w-10 h-10 rounded-full"
+                                                                                                                    />
+                                                                                                                    <div class="flex-1">
+                                                                                                                        <div class="flex items-center justify-between">
+                                                                                                                            <a 
+                                                                                                                                href={`https://github.com/${member.login}`}
+                                                                                                                                target="_blank"
+                                                                                                                                rel="noopener noreferrer"
+                                                                                                                                class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"
+                                                                                                                            >
+                                                                                                                                {member.login}
+                                                                                                                                <FaSolidLink class="w-3 h-3" />
+                                                                                                                            </a>
+                                                                                                                            <Badge colorScheme="info">
+                                                                                                                                {member.contributions} contributions
+                                                                                                                            </Badge>
+                                                                                                                        </div>
+                                                                                                                        <div class="grid grid-cols-2 gap-2 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                                                                                                            <div class="flex items-center space-x-1">
+                                                                                                                                <FaSolidClock class="w-3 h-3" />
+                                                                                                                                <span>Joined: {format(new Date(member.firstContribution), 'MMM d, yyyy')}</span>
+                                                                                                                            </div>
+                                                                                                                            <div class="flex items-center space-x-1">
+                                                                                                                                <FaSolidCircle class="w-3 h-3" />
+                                                                                                                                <span>Last Active: {format(new Date(member.lastContribution), 'MMM d, yyyy')}</span>
+                                                                                                                            </div>
+                                                                                                                            <div class="flex items-center space-x-1">
+                                                                                                                                <FaSolidCode class="w-3 h-3" />
+                                                                                                                                <span>Time Spent: {member.totalTimeSpent}</span>
+                                                                                                                            </div>
+                                                                                                                        </div>
+                                                                                                                    </div>
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                            
+                                                                                                            {/* Member Activities */}
+                                                                                                            <div class="p-4">
+                                                                                                                <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Recent Activities</h5>
+                                                                                                                <div class="space-y-2">
+                                                                                                                    <For each={member.activities.slice(0, 3)}>
+                                                                                                                        {(activity) => (
+                                                                                                                            <div class="flex items-start space-x-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded">
+                                                                                                                                <div class="flex-1">
+                                                                                                                                    <a 
+                                                                                                                                        href={activity.linkUrl}
+                                                                                                                                        target="_blank"
+                                                                                                                                        rel="noopener noreferrer"
+                                                                                                                                        class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                                                                                                                    >
+                                                                                                                                        {activity.title}
+                                                                                                                                        <FaSolidLink class="w-2.5 h-2.5" />
+                                                                                                                                    </a>
+                                                                                                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                                                                                                                                        {activity.content}
+                                                                                                                                    </p>
+                                                                                                                                    <span class="text-xs text-gray-400 dark:text-gray-500">
+                                                                                                                                        {format(new Date(activity.timestamp), 'MMM d, yyyy')}
+                                                                                                                                    </span>
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                        )}
+                                                                                                                    </For>
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </For>
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                   
+
+                                                                                       
                                                                                     </div>
                                                                                 </Show>
                                                                             </td>

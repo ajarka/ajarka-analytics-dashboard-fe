@@ -259,7 +259,7 @@ export const MainLayout: Component<MainLayoutProps> = (props) => {
                             `}>
                                 <FaSolidBusinessTime class="w-4 h-4" />
                             </div>
-                            {!isCollapsed() && <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Project Time</span>}
+                            {!isCollapsed() && <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Project Timelines</span>}
                         </A>
                         
                     </nav>
@@ -461,7 +461,7 @@ export const MainLayout: Component<MainLayoutProps> = (props) => {
                             `}>
                                 <FaSolidBusinessTime class="w-4 h-4" />
                             </div>
-                            <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Project Time</span>
+                            <span class="font-bold" style={{'font-size': '0.9rem','font-family': 'Figtree'}}>Project Timelines</span>
                         </A>
                     </nav>
                 </aside>
