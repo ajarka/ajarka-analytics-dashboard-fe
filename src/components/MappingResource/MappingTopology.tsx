@@ -52,6 +52,7 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
   const [isModalOpen, setIsModalOpen] = createSignal(false);
   const [lastNodePosition, setLastNodePosition] = createSignal<{ [key: string]: { x: number; y: number } }>({});
   const [isDragging, setIsDragging] = createSignal(false);
+  const [showLegend, setShowLegend] = createSignal(true);
 
   const getMemberContributionLevel = (member: MemberDetailedStats) => {
     const totalContributions =
@@ -186,18 +187,24 @@ const getMemberMetadata = (member: MemberDetailedStats, projects: ExtendedGithub
 
 // Function to generate nodes and edges from filtered members
 const generateTopologyData = createMemo(() => {
+  // console.log('Memulai pembuatan data topologi...');
   const nodes: any[] = [];
   const edges: any[] = [];
   let memberYOffset = 10;
 
+  // Log filtered members
+  // console.log('Member yang difilter:', filteredMembers());
+
   filteredMembers().forEach((member) => {
     const memberData = getMemberMetadata(member, props.projects);
+    console.log(`Metadata untuk ${member.member.login}:`, memberData);
+    
     const memberSpacing = 150; // Reduced from 200 to 150
     
     // Create member node with even smaller size
-    const memberNode = {
+    const memberNode  = {
       id: `member-${member.member.login}`,
-      position: { x: 10, y: memberYOffset },
+      position: { x: 50, y: memberYOffset + 50 },
       data: {
         label: '',
         content: (
@@ -224,7 +231,8 @@ const generateTopologyData = createMemo(() => {
         ),
       },
       inputs: 0,
-      outputs: memberData.length || 1,
+      outputs: 1,
+
     };
     nodes.push(memberNode);
 
@@ -235,16 +243,34 @@ const generateTopologyData = createMemo(() => {
     // Create project and repository nodes
     memberData.forEach((data, projectIndex) => {
       const projectYPos = memberYOffset + (projectIndex * nodeSpacing * 1.2); // Reduced multiplier from 1.5 to 1.2
+
+      // console.log('[MappingTopology304] data -> ', data);
+      
+      // Check if this project has any open issues from this author
+      const projectHasOpenIssues = props.projects
+        .find(p => p.name === data.project.label)?.issues
+        .filter(issue => member.issues.some(mi => mi.number === issue.number))
+        .some(issue => issue.state === 'open');
+        
+      // Also check if any repositories in this project have open issues
+      const anyRepoInProjectHasOpenIssues = data.repositories.some((repo: { label: string; href: string }) => 
+        member.issues
+          .filter(issue => issue.repository.name === repo.label)
+          .some(issue => issue.state === 'open')
+      );
+      
+      // Project is red if it has open issues or any of its repos have open issues
+      const shouldBeRed = projectHasOpenIssues || anyRepoInProjectHasOpenIssues;
       
       // Create project node with smaller size
       const projectNode = {
         id: `project-${member.member.login}-${projectIndex}`,
-        position: { x: 350, y: projectYPos },
+        position: { x: 350, y: projectYPos + 50},
         data: {
           label: '',
           content: (
             <div 
-              class="py-1 px-2 bg-purple-100 rounded-md shadow-sm border border-purple-200 cursor-pointer hover:bg-blue-100"
+              class={`py-1 px-2 ${shouldBeRed ? 'bg-red-100 hover:bg-red-200' : 'bg-purple-100 hover:bg-purple-200'} rounded-md shadow-sm cursor-pointer border ${shouldBeRed ? 'border-red-400' : 'border-purple-400'}`}
               onClick={() => handleNodeClick({
                 id: `project-${member.member.login}-${projectIndex}`,
                 type: 'project',
@@ -261,12 +287,12 @@ const generateTopologyData = createMemo(() => {
                 }
               })}
             >
-              <span class="text-xs font-medium text-purple-800 truncate max-w-[200px] block">{data.project.label}</span>
+              <span class={`text-xs font-medium truncate max-w-[200px] block ${shouldBeRed ? 'text-red-800' : 'text-purple-800'}`}>{data.project.label}</span>
             </div>
           ),
         },
         inputs: 1,
-        outputs: data.repositories.length,
+        outputs:1,
       };
       nodes.push(projectNode);
 
@@ -274,10 +300,10 @@ const generateTopologyData = createMemo(() => {
       edges.push({
         id: `edge-member-${member.member.login}-project-${projectIndex}`,
         sourceNode: memberNode.id,
-        sourceOutput: projectIndex,
+        sourceOutput: 0,
         targetNode: projectNode.id,
         targetInput: 0,
-        type: 'smoothstep',
+        type: 'smoothstep'
       });
 
       // Create repository nodes for this project with smaller size and zigzag pattern
@@ -288,17 +314,22 @@ const generateTopologyData = createMemo(() => {
         const verticalSpacing = nodeSpacing * 0.8; // Tighter vertical spacing
         const repoYPos = projectYPos + (repoIndex * verticalSpacing);
         
+        // Check if this repository has any open issues for this author
+        const repoHasOpenIssues = member.issues
+          .filter(issue => issue.repository.name === repo.label)
+          .some(issue => issue.state === 'open');
+        
         const repoNode = {
           id: `repo-${member.member.login}-${projectIndex}-${repoIndex}`,
           position: { 
-            x: 800 + horizontalOffset, 
-            y: repoYPos 
+            x: 650 + horizontalOffset, 
+            y: repoYPos + 50
           },
           data: {
             label: '',
             content: (
               <div 
-                class="py-1 px-2 bg-green-100 rounded-md shadow-sm border border-green-200 cursor-pointer hover:bg-green-100"
+                class={`py-1 px-2 ${repoHasOpenIssues ? 'bg-red-100 hover:bg-red-200' : 'bg-green-100 hover:bg-green-200'} rounded-md shadow-sm cursor-pointer border ${repoHasOpenIssues ? 'border-red-400' : 'border-green-400'}`}
                 onClick={() => handleNodeClick({
                   id: `repo-${member.member.login}-${projectIndex}-${repoIndex}`,
                   type: 'repo',
@@ -315,7 +346,7 @@ const generateTopologyData = createMemo(() => {
                   }
                 })}
               >
-                <span class="text-xs font-medium text-green-800 truncate max-w-[200px] block">{repo.label}</span>
+                <span class={`text-xs font-medium truncate max-w-[200px] block ${repoHasOpenIssues ? 'text-red-800' : 'text-green-800'}`}>{repo.label}</span>
               </div>
             ),
           },
@@ -328,14 +359,10 @@ const generateTopologyData = createMemo(() => {
         edges.push({
           id: `edge-project-${member.member.login}-${projectIndex}-repo-${repoIndex}`,
           sourceNode: projectNode.id,
-          sourceOutput: repoIndex,
+          sourceOutput: 0,
           targetNode: repoNode.id,
           targetInput: 0,
-          type: 'smoothstep',
-          style: {
-            stroke: isEven ? '#10B981' : '#059669', // Slightly different colors for even/odd
-            strokeWidth: 1,
-          }
+          type: 'smoothstep'
         });
       });
     });
@@ -348,11 +375,24 @@ const generateTopologyData = createMemo(() => {
   // Update total height needed with adjusted minimum for zigzag layout
   setTotalHeight(Math.max(700, memberYOffset + 100));
 
+  // console.log('Nodes yang dihasilkan:', nodes);
+  // console.log('Edges yang dihasilkan:', edges);
+  console.log('Data Topologi Lengkap:', { nodes, edges });
+  
   return { nodes, edges };
 });
 
 const [nodes, setNodes] = createSignal(generateTopologyData().nodes);
 const [edges, setEdges] = createSignal(generateTopologyData().edges);
+
+// // Tambahkan console log untuk melihat data
+// console.log('Data Nodes:', nodes());
+// console.log('Data Edges:', edges());
+// console.log('Data Topologi Lengkap:', generateTopologyData());
+
+// // Jika ingin melihat data props yang masuk
+// console.log('Data Member:', props.members);
+// console.log('Data Projects:', props.projects);
 
 const handleNodesChange = (newNodes: any[]) => {
   // Check if any node position has changed significantly
@@ -388,6 +428,8 @@ const handleNodesChange = (newNodes: any[]) => {
   }, {} as { [key: string]: { x: number; y: number } });
   setLastNodePosition(newPositions);
 
+  // console.log('[MappingTopology290425] newNodes',newNodes);
+
   setNodes(newNodes);
 };
 
@@ -402,6 +444,10 @@ onMount(() => {
 });
 
 const handleNodeClick = (node: any) => { 
+  console.log('Node yang diklik:', node);
+  console.log('Tipe node:', node.type);
+  console.log('Data node:', node.data);
+  
   setSelectedNode(node);
   setIsModalOpen(true);
 };
@@ -813,56 +859,101 @@ const renderNodeDetails = () => {
 };
 
 return (
-  <>
-  <Box class="w-full min-h-screen bg-white rounded-lg shadow-lg">
-    <Box class="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-      <HStack spacing="4" justify="space-between">
-        <HStack spacing="2">
-          <div class="w-5 h-5">
-            <FiActivity class="w-full h-full" />
-          </div>
-          <Text size="xl" fontWeight="bold" class="font-fightree">Team Topology</Text> 
+  <div class="w-full h-full overflow-hidden">
+    <Box class="w-full h-full flex flex-col bg-white max-h-[80vh] max-w-[80vw] rounded-lg shadow-lg overflow-hidden">
+      <div class="p-4 border-b border-gray-200 bg-white z-10 ">
+        <HStack spacing="4" justify="space-between">
+          <HStack spacing="2">
+            <div class="w-5 h-5">
+              <FiActivity class="w-full h-full" />
+            </div>
+            <Text size="xl" fontWeight="bold" class="font-fightree">Team Topology</Text> 
+          </HStack>
+          <IconButton
+            aria-label="Refresh"
+            icon={<FiActivity />}
+            variant="ghost"
+            colorScheme="neutral"
+          />
         </HStack>
-        <IconButton
-          aria-label="Refresh"
-          icon={<FiActivity />}
-          variant="ghost"
-          colorScheme="neutral"
-        />
-      </HStack>
-    </Box>
-    <Box class="relative p-4" style={{ height: "calc(100vh - 100px)" }}>
-      <div class={styles.main} style={{ height: `${totalHeight()}px` }}>
-        <SolidFlow
-            nodes={nodes()}
-            edges={edges()}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={(newEdges) => {
-                setEdges(newEdges as any);
-            }}
-        />
+      </div>
+      <SolidFlow
+              nodes={nodes()}
+              edges={edges()}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={(newEdges) => {
+                  setEdges(newEdges as any);
+              }}
+          />
+      <div >
+        <div  >
+         
+        </div>
       </div>
     </Box>
-  </Box>
 
-  <Modal opened={isModalOpen()} onClose={() => setIsModalOpen(false)} size="7xl">
-    <ModalOverlay />
-    <ModalContent class="max-w-[90vw]">
-      <ModalCloseButton />
-      <ModalHeader class="font-fightree text-2xl border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">Node Details</ModalHeader>
-      <ModalBody class="p-8">
-        {renderNodeDetails()}
-      </ModalBody>
-      <ModalFooter class="border-t border-gray-200">
-        <HStack spacing="$4" justify="flex-end">
-          <Button variant="ghost" onClick={() => setIsModalOpen(false)} class="font-fightree">
-            Close
-          </Button>
-        </HStack>
-      </ModalFooter>
-    </ModalContent>
-  </Modal>
-  </>
+    {/* Floating Legend Component */}
+    <div class="fixed bottom-4 right-4 z-50 pointer-events-auto">
+      <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
+        <div 
+          class="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 cursor-pointer"
+          onClick={() => setShowLegend(!showLegend())}
+        >
+          <Text size="sm" fontWeight="bold" class="text-gray-700">Color Legend</Text>
+          <div class="transform transition-transform duration-200" classList={{ 'rotate-180': !showLegend() }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 15L12 9L18 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        
+        <div 
+          class="overflow-hidden transition-all duration-300 ease-in-out"
+          style={{ 
+            'max-height': showLegend() ? '200px' : '0px',
+            opacity: showLegend() ? '1' : '0'
+          }}
+        >
+          <div class="p-4 space-y-3">
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
+              <Text size="xs" class="text-gray-700">Author</Text>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 bg-purple-100 border border-purple-400 rounded"></div>
+              <Text size="xs" class="text-gray-700">Project (No Open Issues)</Text>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 bg-green-100 border border-green-400 rounded"></div>
+              <Text size="xs" class="text-gray-700">Repository (No Open Issues)</Text>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 bg-red-100 border border-red-400 rounded"></div>
+              <Text size="xs" class="text-gray-700">Project/Repository (Has Open Issues)</Text>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <Modal opened={isModalOpen()} onClose={() => setIsModalOpen(false)} size="7xl">
+      <ModalOverlay />
+      <ModalContent class="max-w-[90vw]">
+        <ModalCloseButton />
+        <ModalHeader class="font-fightree text-2xl border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">Node Details</ModalHeader>
+        <ModalBody class="p-8">
+          {renderNodeDetails()}
+        </ModalBody>
+        <ModalFooter class="border-t border-gray-200">
+          <HStack spacing="$4" justify="flex-end">
+            <Button variant="ghost" onClick={() => setIsModalOpen(false)} class="font-fightree">
+              Close
+            </Button>
+          </HStack>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  </div>
 );
 };
 
