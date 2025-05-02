@@ -65,6 +65,9 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
     if (totalContributions >= 20) return 'moderate';
     return 'low';
   };
+  onMount(() => {
+    console.log("_",totalHeight())
+  });
 
   const filteredMembers = createMemo(() => {
     let filtered = [...props.members];
