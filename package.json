@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --port 3000",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "vite --port 3000"
   },
   "dependencies": {
     "@amcharts/amcharts5": "5.10.12",
