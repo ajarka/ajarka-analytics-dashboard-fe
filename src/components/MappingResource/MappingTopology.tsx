@@ -47,7 +47,7 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
   const [contributionFilter] = createSignal<string[]>([]);
   const [sortBy] = createSignal('progress');
   const [searchQuery] = createSignal('');
-  const [totalHeight, setTotalHeight] = createSignal(1000);
+  const [_, setTotalHeight] = createSignal(1000);
   const [selectedNode, setSelectedNode] = createSignal<any>(null);
   const [isModalOpen, setIsModalOpen] = createSignal(false);
   const [lastNodePosition, setLastNodePosition] = createSignal<{ [key: string]: { x: number; y: number } }>({});
