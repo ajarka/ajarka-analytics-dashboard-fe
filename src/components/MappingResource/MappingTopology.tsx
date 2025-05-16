@@ -13,6 +13,16 @@ import {
   ModalCloseButton,
   Button,
   Badge,
+  Select,
+  SelectTrigger,
+  SelectPlaceholder,
+  SelectValue,
+  SelectIcon,
+  SelectContent,
+  SelectListbox,
+  SelectOption,
+  SelectOptionText,
+  SelectOptionIndicator,
 } from '@hope-ui/solid';
 import { GithubProject, MemberDetailedStats } from '../../types/github';
 import { FiActivity } from 'solid-icons/fi';
@@ -53,6 +63,9 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
   const [lastNodePosition, setLastNodePosition] = createSignal<{ [key: string]: { x: number; y: number } }>({});
   const [isDragging, setIsDragging] = createSignal(false);
   const [showLegend, setShowLegend] = createSignal(true);
+  const [issueStatusFilter, setIssueStatusFilter] = createSignal<string>('all');
+  const [projectFilterbyStatus, setProjectFilterbyStatus] = createSignal<string>('all');
+
 
   const getMemberContributionLevel = (member: MemberDetailedStats) => {
     const totalContributions =
@@ -66,11 +79,40 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
     return 'low';
   };
   onMount(() => {
-    console.log("_",totalHeight())
+    console.log("_", totalHeight(), props.projects)
   });
+  const enrichMemberIssuesWithStatus = (members: MemberDetailedStats[], projects: ExtendedGithubProject[]) => {
+    return members.map(member => {
+      // Create a copy to avoid mutating the original
+      const enrichedMember = { ...member };
+
+      // Enrich each issue with status from projects
+      enrichedMember.issues = member.issues.map(issue => {
+        const enrichedIssue = { ...issue };
+
+        // Find matching project issue to get status
+        for (const project of projects) {
+          const projectIssue = project.issues.find(pi =>
+            pi.number === issue.number &&
+            pi.repository === issue.repository.name
+          );
+
+          if (projectIssue?.status) {
+            enrichedIssue.status = projectIssue.status;
+            break;
+          }
+        }
+
+        return enrichedIssue;
+      });
+
+      return enrichedMember;
+    });
+  };
 
   const filteredMembers = createMemo(() => {
-    let filtered = [...props.members];
+    // let filtered = [...props.members];
+    let filtered = enrichMemberIssuesWithStatus([...props.members], props.projects);
 
     // Apply search filter
     if (searchQuery()) {
@@ -190,31 +232,43 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
 
   // Function to generate nodes and edges from filtered members
   const generateTopologyData = createMemo(() => {
-    // console.log('Memulai pembuatan data topologi...');
-    const nodes: any[] = [];
-    const edges: any[] = [];
+    const allNodes: any[] = [];
+    const allEdges: any[] = [];
+    const nodeMap: Record<string, boolean> = {}; // Track which nodes exist
     let memberYOffset = 10;
+    const memberSpacing = 150; // Define memberSpacing here
 
-    // Log filtered members
-    // console.log('Member yang difilter:', filteredMembers());
+    // Filter members based on issue status
+    const filteredMembersData = filteredMembers().filter(member => {
+      const memberHasOpenIssues = member.issues.some(issue => issue.state === 'open');
+      
+      // Keep this member based on the filter
+      return issueStatusFilter() === 'all' || 
+             (issueStatusFilter() === 'open' && memberHasOpenIssues) || 
+             (issueStatusFilter() === 'closed' && !memberHasOpenIssues);
+    });
 
-    filteredMembers().forEach((member) => {
+    // Process each filtered member
+    filteredMembersData.forEach((member) => {
       const memberData = getMemberMetadata(member, props.projects);
       console.log(`Metadata untuk ${member.member.login}:`, memberData);
 
-      const memberSpacing = 150; // Reduced from 200 to 150
-
-      // Create member node with even smaller size
+      // Create member node
+      const memberNodeId = `member-${member.member.login}`;
       const memberNode = {
-        id: `member-${member.member.login}`,
+        id: memberNodeId,
         position: { x: 50, y: memberYOffset + 50 },
+        type: 'default',
+        connectable: true,
+        sourcePosition: 'right',
+        targetPosition: 'left',
         data: {
           label: '',
           content: (
             <div
               class="flex items-center gap-1 py-1 px-2 bg-blue-100 rounded-md shadow-sm cursor-pointer hover:bg-gray-100"
               onClick={() => handleNodeClick({
-                id: `member-${member.member.login}`,
+                id: memberNodeId,
                 type: 'member',
                 data: {
                   content: {
@@ -235,47 +289,73 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
         },
         inputs: 0,
         outputs: 1,
-
       };
-      nodes.push(memberNode);
+      allNodes.push(memberNode);
+      nodeMap[memberNodeId] = true;
 
-      // Calculate spacing
-      // const maxReposPerProject = Math.max(...memberData.map(data => data.repositories.length), 1);
-      const nodeSpacing = 100; // Reduced from 80 to 60
+      const nodeSpacing = 100;
+      let visibleProjects = 0;
 
-      // Create project and repository nodes
-      memberData.forEach((data, projectIndex) => {
-        const projectYPos = memberYOffset + (projectIndex * nodeSpacing * 1.2); // Reduced multiplier from 1.5 to 1.2
-
-        // console.log('[MappingTopology304] data -> ', data);
-
-        // Check if this project has any open issues from this author
-        const projectHasOpenIssues = props.projects
+      // Filter projects based on issue status
+      const filteredProjects = memberData.filter(data => {
+        const projectIssues = props.projects
           .find(p => p.name === data.project.label)?.issues
-          .filter(issue => member.issues.some(mi => mi.number === issue.number))
-          .some(issue => issue.state === 'open');
+          .filter(issue => member.issues.some(mi => mi.number === issue.number)) || [];
+        
+        const projectHasOpenIssues = projectIssues.some(issue => issue.state === 'open');
+        
+        // Also check repositories within this project
+        const anyRepoInProjectHasOpenIssues = data.repositories.some((repo: { label: string; href: string }) =>
+          member.issues
+            .filter(issue => issue.repository.name === repo.label)
+            .some(issue => issue.state === 'open')
+        );
+        
+        const shouldBeRed = projectHasOpenIssues || anyRepoInProjectHasOpenIssues;
+        
+        return issueStatusFilter() === 'all' || 
+               (issueStatusFilter() === 'open' && shouldBeRed) || 
+               (issueStatusFilter() === 'closed' && !shouldBeRed);
+      });
 
-        // Also check if any repositories in this project have open issues
+      // Process each filtered project
+      filteredProjects.forEach((data, projectIndex) => {
+        const projectYPos = memberYOffset + (visibleProjects * nodeSpacing * 1.2);
+        visibleProjects++;
+
+        // Check if this project has any open issues
+        const projectIssues = props.projects
+          .find(p => p.name === data.project.label)?.issues
+          .filter(issue => member.issues.some(mi => mi.number === issue.number)) || [];
+        
+        const projectHasOpenIssues = projectIssues.some(issue => issue.state === 'open');
+
+        // Check if any repos have open issues
         const anyRepoInProjectHasOpenIssues = data.repositories.some((repo: { label: string; href: string }) =>
           member.issues
             .filter(issue => issue.repository.name === repo.label)
             .some(issue => issue.state === 'open')
         );
 
-        // Project is red if it has open issues or any of its repos have open issues
+        // Project is red if it has open issues
         const shouldBeRed = projectHasOpenIssues || anyRepoInProjectHasOpenIssues;
 
-        // Create project node with smaller size
+        // Create project node
+        const projectNodeId = `project-${member.member.login}-${projectIndex}`;
         const projectNode = {
-          id: `project-${member.member.login}-${projectIndex}`,
+          id: projectNodeId,
           position: { x: 350, y: projectYPos + 50 },
+          type: 'default',
+          connectable: true,
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
             label: '',
             content: (
               <div
                 class={`py-1 px-2 ${shouldBeRed ? 'bg-red-100 hover:bg-red-200' : 'bg-purple-100 hover:bg-purple-200'} rounded-md shadow-sm cursor-pointer border ${shouldBeRed ? 'border-red-400' : 'border-purple-400'}`}
                 onClick={() => handleNodeClick({
-                  id: `project-${member.member.login}-${projectIndex}`,
+                  id: projectNodeId,
                   type: 'project',
                   data: {
                     content: {
@@ -297,44 +377,59 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
           inputs: 1,
           outputs: 1,
         };
-        nodes.push(projectNode);
+        allNodes.push(projectNode);
+        nodeMap[projectNodeId] = true;
 
-        // Connect member to project
-        edges.push({
-          id: `edge-member-${member.member.login}-project-${projectIndex}`,
-          sourceNode: memberNode.id,
-          sourceOutput: 0,
-          targetNode: projectNode.id,
-          targetInput: 0,
-          type: 'smoothstep'
+        // Add edge from member to project
+        allEdges.push({
+          id: `edge-${memberNodeId}-${projectNodeId}`,
+          source: memberNodeId,
+          target: projectNodeId,
         });
 
-        // Create repository nodes for this project with smaller size and zigzag pattern
-        data.repositories.forEach((repo: { label: string; href: string }, repoIndex: number) => {
-          // Calculate zigzag offset based on index
-          const isEven = repoIndex % 2 === 0;
-          const horizontalOffset = isEven ? 0 : 160; // Offset for odd numbered repos
-          const verticalSpacing = nodeSpacing * 0.8; // Tighter vertical spacing
-          const repoYPos = projectYPos + (repoIndex * verticalSpacing);
+        let visibleRepos = 0;
 
-          // Check if this repository has any open issues for this author
-          const repoHasOpenIssues = member.issues
-            .filter(issue => issue.repository.name === repo.label)
-            .some(issue => issue.state === 'open');
+        // Filter repositories based on issue status
+        const filteredRepos = data.repositories.filter((repo: { label: string; href: string }) => {
+          const repoIssues = member.issues.filter(issue => issue.repository.name === repo.label);
+          const repoHasOpenIssues = repoIssues.some(issue => issue.state === 'open');
+          
+          return issueStatusFilter() === 'all' || 
+                 (issueStatusFilter() === 'open' && repoHasOpenIssues) || 
+                 (issueStatusFilter() === 'closed' && !repoHasOpenIssues);
+        });
 
+        // Process each filtered repo
+        filteredRepos.forEach((repo: { label: string; href: string }, repoIndex: number) => {
+          const isEven = visibleRepos % 2 === 0;
+          const horizontalOffset = isEven ? 0 : 160;
+          const verticalSpacing = nodeSpacing * 0.8;
+          const repoYPos = projectYPos + (visibleRepos * verticalSpacing);
+          visibleRepos++;
+
+          // Check if repo has open issues
+          const repoIssues = member.issues.filter(issue => issue.repository.name === repo.label);
+          const repoHasOpenIssues = repoIssues.some(issue => issue.state === 'open');
+
+          // Create repo node
+          const repoNodeId = `repo-${member.member.login}-${projectIndex}-${repoIndex}`;
           const repoNode = {
-            id: `repo-${member.member.login}-${projectIndex}-${repoIndex}`,
+            id: repoNodeId,
             position: {
               x: 650 + horizontalOffset,
               y: repoYPos + 50
             },
+            type: 'default',
+            connectable: true,
+            sourcePosition: 'right',
+            targetPosition: 'left',
             data: {
               label: '',
               content: (
                 <div
                   class={`py-1 px-2 ${repoHasOpenIssues ? 'bg-red-100 hover:bg-red-200' : 'bg-green-100 hover:bg-green-200'} rounded-md shadow-sm cursor-pointer border ${repoHasOpenIssues ? 'border-red-400' : 'border-green-400'}`}
                   onClick={() => handleNodeClick({
-                    id: `repo-${member.member.login}-${projectIndex}-${repoIndex}`,
+                    id: repoNodeId,
                     type: 'repo',
                     data: {
                       content: {
@@ -356,34 +451,40 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
             inputs: 1,
             outputs: 0,
           };
-          nodes.push(repoNode);
+          allNodes.push(repoNode);
+          nodeMap[repoNodeId] = true;
 
-          // Connect project to repository with curved edges
-          edges.push({
-            id: `edge-project-${member.member.login}-${projectIndex}-repo-${repoIndex}`,
-            sourceNode: projectNode.id,
-            sourceOutput: 0,
-            targetNode: repoNode.id,
-            targetInput: 0,
-            type: 'smoothstep'
+          // Add edge from project to repo
+          allEdges.push({
+            id: `edge-${projectNodeId}-${repoNodeId}`,
+            source: projectNodeId,
+            target: repoNodeId,
           });
         });
       });
 
-      // Calculate next member's starting Y position with adjusted spacing for zigzag
-      const totalProjectHeight = memberData.length * nodeSpacing * 1.5; // Increased multiplier for zigzag
-      memberYOffset += Math.max(totalProjectHeight, memberSpacing);
+      if (visibleProjects > 0) {
+        const totalProjectHeight = visibleProjects * nodeSpacing * 1.5;
+        memberYOffset += Math.max(totalProjectHeight, memberSpacing);
+      }
     });
 
-    // Update total height needed with adjusted minimum for zigzag layout
     setTotalHeight(Math.max(700, memberYOffset + 100));
+    console.log('Data Topologi Lengkap:', { nodes: allNodes, edges: allEdges });
 
-    // console.log('Nodes yang dihasilkan:', nodes);
-    // console.log('Edges yang dihasilkan:', edges);
-    console.log('Data Topologi Lengkap:', { nodes, edges });
+    // Setelah semua node dibuat
+    const nodeIds = allNodes.map(n => n.id);
 
-    return { nodes, edges };
+    // Validasi edge
+    const validEdges = allEdges.filter(e => nodeIds.includes(e.source) && nodeIds.includes(e.target));
+    if (validEdges.length !== allEdges.length) {
+      console.warn('Ada edge yang source/target-nya tidak ditemukan di node:', allEdges.filter(e => !nodeIds.includes(e.source) || !nodeIds.includes(e.target)));
+    }
+
+    // Kirim ke state
+    return { nodes: allNodes, edges: validEdges };
   });
+
 
   const [nodes, setNodes] = createSignal(generateTopologyData().nodes);
   const [edges, setEdges] = createSignal(generateTopologyData().edges);
@@ -878,10 +979,100 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
               variant="ghost"
               colorScheme="neutral"
             />
+            <div class='space-x-2 flex'>
+
+              <HStack spacing="4">
+                <div class="w-64">
+                  <Select
+                    value={issueStatusFilter()}
+                    onChange={(value: string) => {
+                      setIssueStatusFilter(value);
+
+                      // Get the latest topology data based on the new filter
+                      const newTopology = generateTopologyData();
+
+                      // Update nodes and edges with one atomic update for each
+                      setNodes(newTopology.nodes);
+                      setEdges(newTopology.edges);
+                    }}
+                    placeholder="Filter by issue status"
+                  >
+                    <SelectTrigger>
+                      <SelectPlaceholder>Filter by issue status</SelectPlaceholder>
+                      <SelectValue />
+                      <SelectIcon />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectListbox>
+                        <SelectOption value="all">
+                          <SelectOptionText>All Issues</SelectOptionText>
+                          <SelectOptionIndicator />
+                        </SelectOption>
+                        <SelectOption value="open">
+                          <SelectOptionText>Open Issues</SelectOptionText>
+                          <SelectOptionIndicator />
+                        </SelectOption>
+                        <SelectOption value="closed">
+                          <SelectOptionText>Closed Issues</SelectOptionText>
+                          <SelectOptionIndicator />
+                        </SelectOption>
+                      </SelectListbox>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+              </HStack>
+              <HStack spacing="4">
+                <div class="w-64">
+                  <Select
+                    value={projectFilterbyStatus()}
+                    onChange={(value: string) => {
+                      setProjectFilterbyStatus(value);
+
+                      // Get the latest topology data based on the new filter
+                      const newTopology = generateTopologyData();
+
+                      // Update nodes and edges with one atomic update for each
+                      setNodes(newTopology.nodes);
+                      setEdges(newTopology.edges);
+                    }}
+                    placeholder="Filter by project status"
+                  >
+                    <SelectTrigger>
+                      <SelectPlaceholder>Filter by project status</SelectPlaceholder>
+                      <SelectValue />
+                      <SelectIcon />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectListbox>
+                        <SelectOption value="all">
+                          <SelectOptionText>All Status</SelectOptionText>
+                          <SelectOptionIndicator />
+                        </SelectOption>
+                        <SelectOption value="to_do"> 
+                          <SelectOptionText>To Do</SelectOptionText>
+                          <SelectOptionIndicator />
+                        </SelectOption>
+                        <SelectOption value="in_progress">
+                          <SelectOptionText>In Progress</SelectOptionText>
+                          <SelectOptionIndicator />
+                        </SelectOption>
+                        <SelectOption value="done">
+                          <SelectOptionText>Done</SelectOptionText>
+                          <SelectOptionIndicator />
+                        </SelectOption>
+                      </SelectListbox>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+              </HStack>
+            </div>
+
           </HStack>
         </div>
-        <Box class="relative p-4" style={{ height: "calc(100vh - 100px)"  }}>
-          <div class={styles.main} style={{ height: `100%`}}>
+        <Box class="relative p-4" style={{ height: "calc(100vh - 100px)" }}>
+          <div class={styles.main} style={{ height: `100%` }}>
             <SolidFlow
               nodes={nodes()}
               edges={edges()}
