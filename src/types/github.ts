@@ -51,7 +51,6 @@ export interface GithubIssue {
     start_date?: string;
     due_date?: string;
     html_url: string;
-    status: string;
     repository: {
         name: string;
         full_name: string;
