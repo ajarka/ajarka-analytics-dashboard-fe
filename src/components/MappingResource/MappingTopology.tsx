@@ -20,6 +20,7 @@ import { SolidFlow } from "solid-flow";
 import { calculateProgressStats } from "../Progress/progressUtils";
 import styles from "../../styles.module.css";
 
+
 interface ProjectIssue {
   number: number;
   title: string;
@@ -53,12 +54,9 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
   }>({});
   const [isDragging, setIsDragging] = createSignal(false);
   const [showLegend, setShowLegend] = createSignal(true);
-  const [projectStatusFilter, setProjectStatusFilter] = createSignal<string[]>(
-    []
-  );
-  const [projectOpenFilter, setProjectOpenFilter] = createSignal<
-    boolean | null
-  >(null); // null = all, true = open only, false = closed only
+  const [projectStatusFilter, setProjectStatusFilter] = createSignal<string[]>([]);
+  const [projectOpenFilter, setProjectOpenFilter] = createSignal<boolean | null>(null);
+  
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = createSignal(false);
   const [isStateDropdownOpen, setIsStateDropdownOpen] = createSignal(false);
 
@@ -74,46 +72,70 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
     return "low";
   };
 
-  const getProjectStatus = (project: ExtendedGithubProject) => {
+  // Helper functions (ensure these are correct as per previous discussions)
+  const getProjectStatus = (project: ExtendedGithubProject): "To Do" | "In Progress" | "Done" => {
     const totalIssues = project.issues.length;
-    const closedIssues = project.issues.filter(
-      (issue) => issue.state === "closed"
-    ).length;
-    const openIssues = totalIssues - closedIssues;
-
     if (totalIssues === 0) return "To Do";
-    if (closedIssues === totalIssues) return "Done";
-    if (openIssues > 0 && closedIssues > 0) return "In Progress";
+    const openIssuesCount = project.issues.filter(issue => issue.state === "open").length;
+    const allIssuesClosed = project.issues.every(issue => issue.state === "closed");
+    if (allIssuesClosed) return "Done";
+    if (openIssuesCount > 0) return "In Progress";
     return "To Do";
   };
 
   const isProjectOpen = (project: ExtendedGithubProject) => {
-    return project.issues.some((issue) => issue.state === "open");
+    const members = filteredMembers();
+    console.log(`Checking if project ${project.name} is open...`);
+    console.log('Filtered members:', members.map(m => m.member.login));
+  
+    const projectHasOpenIssues = members.some((member) =>
+      project.issues.some((projectIssue) =>
+        member.issues.some(
+          (memberIssue) =>
+            memberIssue.number === projectIssue.number &&
+            memberIssue.repository.name === projectIssue.repository &&
+            memberIssue.state === "open"
+        )
+      )
+    );
+    console.log(`Project ${project.name} has open issues:`, projectHasOpenIssues);
+  
+    const repoNames = new Set(
+      project.issues.map((issue) => issue.repository)
+    );
+    const anyRepoInProjectHasOpenIssues = Array.from(repoNames).some((repoName) =>
+      members.some((member) =>
+        member.issues.some(
+          (issue) => issue.repository.name === repoName && issue.state === "open"
+        )
+      )
+    );
+    console.log(`Project ${project.name} has repos with open issues:`, anyRepoInProjectHasOpenIssues);
+  
+    return projectHasOpenIssues || anyRepoInProjectHasOpenIssues;
   };
 
-  // Filter projects based on status and open/closed state
+  // The memo that filters projects based on the filter signals
   const filteredProjects = createMemo(() => {
-    let filtered = [...props.projects];
-
-    // Apply status filter
+    let currentProjects = [...props.projects];
+  
+    // Filter by project status
     if (projectStatusFilter().length > 0) {
-      filtered = filtered.filter((project) =>
-        projectStatusFilter().includes(getProjectStatus(project))
-      );
+      currentProjects = currentProjects.filter((project) => {
+        const projectStatus = getProjectStatus(project);
+        return projectStatusFilter().includes(projectStatus);
+      });
     }
-
-    // Apply open/closed filter
+  
+    // Filter by open projects
     if (projectOpenFilter() !== null) {
-      if (projectOpenFilter() === true) {
-        // Show only open projects
-        filtered = filtered.filter((project) => isProjectOpen(project));
-      } else if (projectOpenFilter() === false) {
-        // Show only closed projects
-        filtered = filtered.filter((project) => !isProjectOpen(project));
-      }
+      currentProjects = currentProjects.filter((project) => {
+        const isOpen = isProjectOpen(project);
+        return projectOpenFilter() === isOpen;
+      });
     }
-
-    return filtered;
+  
+    return currentProjects;
   });
 
   const filteredMembers = createMemo(() => {
@@ -204,6 +226,7 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
     return filtered;
   });
 
+  
   const getMemberMetadata = (
     member: MemberDetailedStats,
     projects: ExtendedGithubProject[]
@@ -1452,14 +1475,7 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
                   }}
                 />
               )}
-              <SolidFlow
-                nodes={nodes()}
-                edges={edges()}
-                onNodesChange={handleNodesChange}
-                onEdgesChange={(newEdges) => {
-                  setEdges(newEdges as any);
-                }}
-              />
+             
             </div>
           </Box>
         </div>
@@ -1559,10 +1575,9 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
           </ModalContent>
         </Modal>
       </div>
-      {" "}
+      ){" "}
     </div>
   );
 }; // or just }
 
 export default MappingTopology;
-
