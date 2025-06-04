@@ -41,8 +41,28 @@ interface MappingTopologyProps {
 
 // Simplified filter types based on color legend
 type StateFilter = "all" | "hasOpenIssues" | "noOpenIssues";
-
 const MappingTopology: Component<MappingTopologyProps> = (props) => {
+  const [projectFilter] = createSignal<string[]>([]);
+  const [repositoryFilter] = createSignal<string[]>([]);
+  const [contributionFilter] = createSignal<string[]>([]);
+  const [sortBy] = createSignal("progress");
+  const [searchQuery] = createSignal("");
+  const [_, setTotalHeight] = createSignal(1000);
+  const [selectedNode, setSelectedNode] = createSignal<any>(null);
+  const [isModalOpen, setIsModalOpen] = createSignal(false);
+  const [lastNodePosition, setLastNodePosition] = createSignal<{
+    [key: string]: { x: number; y: number };
+  }>({});
+  const [isDragging, setIsDragging] = createSignal(false);
+  const [showLegend, setShowLegend] = createSignal(true);
+  const [projectStatusFilter, setProjectStatusFilter] = createSignal<string[]>(
+    []
+  );
+  const [projectOpenFilter, setProjectOpenFilter] = createSignal<
+    boolean | null
+  >(null); // null = all, true = open only, false = closed only
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = createSignal(false);
+  const [isStateDropdownOpen, setIsStateDropdownOpen] = createSignal(false);
   const [selectedNode, setSelectedNode] = createSignal<any>(null);
   const [isModalOpen, setIsModalOpen] = createSignal(false);
   const [showLegend, setShowLegend] = createSignal(true);
@@ -55,7 +75,61 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
   const [nodes, setNodes] = createSignal<any[]>([]);
   const [edges, setEdges] = createSignal<any[]>([]);
 
-  // Check if project has open issues for this member
+  const getMemberContributionLevel = (member: MemberDetailedStats) => {
+    const totalContributions =
+      member.codeStats.totalCommits +
+      member.codeStats.totalPRs +
+      member.issues.length;
+
+    if (totalContributions > 100) return "very-active";
+    if (totalContributions >= 50) return "active";
+    if (totalContributions >= 20) return "moderate";
+    return "low";
+  };
+
+  const getProjectStatus = (project: ExtendedGithubProject) => {
+    const totalIssues = project.issues.length;
+    const closedIssues = project.issues.filter(
+      (issue) => issue.state === "closed"
+    ).length;
+    const openIssues = totalIssues - closedIssues;
+
+    if (totalIssues === 0) return "To Do";
+    if (closedIssues === totalIssues) return "Done";
+    if (openIssues > 0 && closedIssues > 0) return "In Progress";
+    return "To Do";
+  };
+
+  const isProjectOpen = (project: ExtendedGithubProject) => {
+    return project.issues.some((issue) => issue.state === "open");
+  };
+
+  // Filter projects based on status and open/closed state
+  const filteredProjects = createMemo(() => {
+    let filtered = [...props.projects];
+
+    // Apply status filter
+    if (projectStatusFilter().length > 0) {
+      filtered = filtered.filter((project) =>
+        projectStatusFilter().includes(getProjectStatus(project))
+      );
+    }
+
+    // Apply open/closed filter
+    if (projectOpenFilter() !== null) {
+      if (projectOpenFilter() === true) {
+        // Show only open projects
+        filtered = filtered.filter((project) => isProjectOpen(project));
+      } else if (projectOpenFilter() === false) {
+        // Show only closed projects
+        filtered = filtered.filter((project) => !isProjectOpen(project));
+      }
+    }
+
+    return filtered;
+  });
+  
+   // Check if project has open issues for this member
   const hasOpenIssuesForMember = (project: ExtendedGithubProject, member: MemberDetailedStats): boolean => {
     return project.issues
       .filter(issue => member.issues.some(mi => mi.number === issue.number))
@@ -72,15 +146,108 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
     );
   };
 
+  const filteredMembers = createMemo(() => {
+    let filtered = [...props.members];
+
+    // Apply search filter
+    if (searchQuery()) {
+      const query = searchQuery().toLowerCase();
+      filtered = filtered.filter((member) =>
+        member.member.login.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply project filter
+    if (projectFilter().length > 0) {
+      filtered = filtered.filter((member) => {
+        return filteredProjects() // Use filteredProjects instead of props.projects
+          .filter((project) => projectFilter().includes(project.name))
+          .some((project) =>
+            project.issues.some((projectIssue) =>
+              member.issues.some(
+                (memberIssue) =>
+                  memberIssue.number === projectIssue.number &&
+                  memberIssue.repository.name === projectIssue.repository
+              )
+            )
+          );
+      });
+    }
+
+    // Apply repository filter
+    if (repositoryFilter().length > 0) {
+      filtered = filtered.filter((member) =>
+        member.issues.some((issue) =>
+          repositoryFilter().includes(issue.repository.name)
+        )
+      );
+    }
+
+    // Apply contribution level filter
+    if (contributionFilter().length > 0) {
+      filtered = filtered.filter((member) =>
+        contributionFilter().includes(getMemberContributionLevel(member))
+      );
+    }
+
+    // Apply sorting
+    switch (sortBy()) {
+      case "name":
+        filtered.sort((a, b) => a.member.login.localeCompare(b.member.login));
+        break;
+      case "commits":
+        filtered.sort(
+          (a, b) => b.codeStats.totalCommits - a.codeStats.totalCommits
+        );
+        break;
+      case "pull-requests":
+        filtered.sort((a, b) => b.codeStats.totalPRs - a.codeStats.totalPRs);
+        break;
+      case "issues":
+        filtered.sort((a, b) => b.issues.length - a.issues.length);
+        break;
+      case "activity":
+        filtered.sort((a, b) => {
+          const activityMapValue = {
+            "very-active": 4,
+            active: 3,
+            moderate: 2,
+            low: 1,
+          };
+          return (
+            activityMapValue[getMemberContributionLevel(b)] -
+            activityMapValue[getMemberContributionLevel(a)]
+          );
+        });
+        break;
+      case "progress":
+        filtered.sort((a, b) => {
+          const progressA = calculateProgressStats(a.issues);
+          const progressB = calculateProgressStats(b.issues);
+          return progressB.issues.percentage - progressA.issues.percentage;
+        });
+        break;
+    }
+
+    // console.log("filtered -> ", JSON.stringify(filtered));
+
+    return filtered;
+  });
+
   const getMemberMetadata = (
     member: MemberDetailedStats,
     projects: ExtendedGithubProject[]
   ) => {
+
+    // Map to store project-repository relationships
     const projectRepoMap = new Map();
 
+    // First, process all projects and their repositories
     projects.forEach((project) => {
       const projectRepos = new Set();
       project.issues.forEach((projectIssue) => {
+        // Check if member has this issue
+
         const memberHasIssue = member.issues.some(
           (memberIssue) =>
             memberIssue.number === projectIssue.number &&
@@ -228,6 +395,7 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
 
     filteredMembers.forEach((member) => {
       const memberData = getMemberMetadata(member, props.projects);
+      console.log(`Metadata untuk ${member.member.login}:`, memberData);
       const memberSpacing = 150;
 
       // Filter member data based on state filter
@@ -300,7 +468,6 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
         const anyRepoHasOpenIssues = hasOpenRepoIssuesForMember(currentProject, member);
         const shouldBeRed = projectHasOpenIssues || anyRepoHasOpenIssues;
 
-        // Create project node
         const projectNode = {
           id: `project-${member.member.login}-${projectIndex}`,
           position: { x: 350, y: projectYPos + 50 },
@@ -313,6 +480,7 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
                     ? "bg-red-100 hover:bg-red-200 border-red-400 text-red-800"
                     : "bg-purple-100 hover:bg-purple-200 border-purple-400 text-purple-800"
                 } rounded-md shadow-sm cursor-pointer border`}
+
                 onClick={() =>
                   handleNodeClick({
                     id: `project-${member.member.login}-${projectIndex}`,
@@ -913,6 +1081,6 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
       </div>
     </div>
   );
-};
+}; // or just }
 
 export default MappingTopology;
