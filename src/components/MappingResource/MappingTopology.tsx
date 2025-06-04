@@ -1,4 +1,4 @@
-import { Component, createMemo, createSignal, For, onMount } from "solid-js";
+import { Component, createMemo, createSignal, For, onMount, createEffect } from "solid-js";
 import {
   HStack,
   Text,
@@ -20,7 +20,6 @@ import { SolidFlow } from "solid-flow";
 import { calculateProgressStats } from "../Progress/progressUtils";
 import styles from "../../styles.module.css";
 
-
 interface ProjectIssue {
   number: number;
   title: string;
@@ -40,205 +39,48 @@ interface MappingTopologyProps {
   projects: ExtendedGithubProject[];
 }
 
+// Simplified filter types based on color legend
+type StateFilter = "all" | "hasOpenIssues" | "noOpenIssues";
+
 const MappingTopology: Component<MappingTopologyProps> = (props) => {
-  const [projectFilter] = createSignal<string[]>([]);
-  const [repositoryFilter] = createSignal<string[]>([]);
-  const [contributionFilter] = createSignal<string[]>([]);
-  const [sortBy] = createSignal("progress");
-  const [searchQuery] = createSignal("");
-  const [_, setTotalHeight] = createSignal(1000);
   const [selectedNode, setSelectedNode] = createSignal<any>(null);
   const [isModalOpen, setIsModalOpen] = createSignal(false);
-  const [lastNodePosition, setLastNodePosition] = createSignal<{
-    [key: string]: { x: number; y: number };
-  }>({});
-  const [isDragging, setIsDragging] = createSignal(false);
   const [showLegend, setShowLegend] = createSignal(true);
-  const [projectStatusFilter, setProjectStatusFilter] = createSignal<string[]>([]);
-  const [projectOpenFilter, setProjectOpenFilter] = createSignal<boolean | null>(null);
   
-  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = createSignal(false);
-  const [isStateDropdownOpen, setIsStateDropdownOpen] = createSignal(false);
+  // Simplified state filter - only what's needed
+  const [stateFilter, setStateFilter] = createSignal<StateFilter>("all");
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = createSignal(false);
 
-  const getMemberContributionLevel = (member: MemberDetailedStats) => {
-    const totalContributions =
-      member.codeStats.totalCommits +
-      member.codeStats.totalPRs +
-      member.issues.length;
+  // Initialize nodes and edges signals
+  const [nodes, setNodes] = createSignal<any[]>([]);
+  const [edges, setEdges] = createSignal<any[]>([]);
 
-    if (totalContributions > 100) return "very-active";
-    if (totalContributions >= 50) return "active";
-    if (totalContributions >= 20) return "moderate";
-    return "low";
+  // Check if project has open issues for this member
+  const hasOpenIssuesForMember = (project: ExtendedGithubProject, member: MemberDetailedStats): boolean => {
+    return project.issues
+      .filter(issue => member.issues.some(mi => mi.number === issue.number))
+      .some(issue => issue.state === "open");
   };
 
-  // Helper functions (ensure these are correct as per previous discussions)
-  const getProjectStatus = (project: ExtendedGithubProject): "To Do" | "In Progress" | "Done" => {
-    const totalIssues = project.issues.length;
-    if (totalIssues === 0) return "To Do";
-    const openIssuesCount = project.issues.filter(issue => issue.state === "open").length;
-    const allIssuesClosed = project.issues.every(issue => issue.state === "closed");
-    if (allIssuesClosed) return "Done";
-    if (openIssuesCount > 0) return "In Progress";
-    return "To Do";
+  // Check if any repository in project has open issues for this member
+  const hasOpenRepoIssuesForMember = (project: ExtendedGithubProject, member: MemberDetailedStats): boolean => {
+    const projectRepos = new Set(project.issues.map(issue => issue.repository));
+    return Array.from(projectRepos).some(repoName =>
+      member.issues
+        .filter(issue => issue.repository.name === repoName)
+        .some(issue => issue.state === "open")
+    );
   };
 
-  const isProjectOpen = (project: ExtendedGithubProject) => {
-    const members = filteredMembers();
-    console.log(`Checking if project ${project.name} is open...`);
-    console.log('Filtered members:', members.map(m => m.member.login));
-  
-    const projectHasOpenIssues = members.some((member) =>
-      project.issues.some((projectIssue) =>
-        member.issues.some(
-          (memberIssue) =>
-            memberIssue.number === projectIssue.number &&
-            memberIssue.repository.name === projectIssue.repository &&
-            memberIssue.state === "open"
-        )
-      )
-    );
-    console.log(`Project ${project.name} has open issues:`, projectHasOpenIssues);
-  
-    const repoNames = new Set(
-      project.issues.map((issue) => issue.repository)
-    );
-    const anyRepoInProjectHasOpenIssues = Array.from(repoNames).some((repoName) =>
-      members.some((member) =>
-        member.issues.some(
-          (issue) => issue.repository.name === repoName && issue.state === "open"
-        )
-      )
-    );
-    console.log(`Project ${project.name} has repos with open issues:`, anyRepoInProjectHasOpenIssues);
-  
-    return projectHasOpenIssues || anyRepoInProjectHasOpenIssues;
-  };
-
-  // The memo that filters projects based on the filter signals
-  const filteredProjects = createMemo(() => {
-    let currentProjects = [...props.projects];
-  
-    // Filter by project status
-    if (projectStatusFilter().length > 0) {
-      currentProjects = currentProjects.filter((project) => {
-        const projectStatus = getProjectStatus(project);
-        return projectStatusFilter().includes(projectStatus);
-      });
-    }
-  
-    // Filter by open projects
-    if (projectOpenFilter() !== null) {
-      currentProjects = currentProjects.filter((project) => {
-        const isOpen = isProjectOpen(project);
-        return projectOpenFilter() === isOpen;
-      });
-    }
-  
-    return currentProjects;
-  });
-
-  const filteredMembers = createMemo(() => {
-    let filtered = [...props.members];
-
-    // Apply search filter
-    if (searchQuery()) {
-      const query = searchQuery().toLowerCase();
-      filtered = filtered.filter((member) =>
-        member.member.login.toLowerCase().includes(query)
-      );
-    }
-
-    // Apply project filter
-    if (projectFilter().length > 0) {
-      filtered = filtered.filter((member) => {
-        return filteredProjects() // Use filteredProjects instead of props.projects
-          .filter((project) => projectFilter().includes(project.name))
-          .some((project) =>
-            project.issues.some((projectIssue) =>
-              member.issues.some(
-                (memberIssue) =>
-                  memberIssue.number === projectIssue.number &&
-                  memberIssue.repository.name === projectIssue.repository
-              )
-            )
-          );
-      });
-    }
-
-    // Apply repository filter
-    if (repositoryFilter().length > 0) {
-      filtered = filtered.filter((member) =>
-        member.issues.some((issue) =>
-          repositoryFilter().includes(issue.repository.name)
-        )
-      );
-    }
-
-    // Apply contribution level filter
-    if (contributionFilter().length > 0) {
-      filtered = filtered.filter((member) =>
-        contributionFilter().includes(getMemberContributionLevel(member))
-      );
-    }
-
-    // Apply sorting
-    switch (sortBy()) {
-      case "name":
-        filtered.sort((a, b) => a.member.login.localeCompare(b.member.login));
-        break;
-      case "commits":
-        filtered.sort(
-          (a, b) => b.codeStats.totalCommits - a.codeStats.totalCommits
-        );
-        break;
-      case "pull-requests":
-        filtered.sort((a, b) => b.codeStats.totalPRs - a.codeStats.totalPRs);
-        break;
-      case "issues":
-        filtered.sort((a, b) => b.issues.length - a.issues.length);
-        break;
-      case "activity":
-        filtered.sort((a, b) => {
-          const activityMapValue = {
-            "very-active": 4,
-            active: 3,
-            moderate: 2,
-            low: 1,
-          };
-          return (
-            activityMapValue[getMemberContributionLevel(b)] -
-            activityMapValue[getMemberContributionLevel(a)]
-          );
-        });
-        break;
-      case "progress":
-        filtered.sort((a, b) => {
-          const progressA = calculateProgressStats(a.issues);
-          const progressB = calculateProgressStats(b.issues);
-          return progressB.issues.percentage - progressA.issues.percentage;
-        });
-        break;
-    }
-
-    // console.log("filtered -> ", JSON.stringify(filtered));
-
-    return filtered;
-  });
-
-  
   const getMemberMetadata = (
     member: MemberDetailedStats,
     projects: ExtendedGithubProject[]
   ) => {
-    // Map to store project-repository relationships
     const projectRepoMap = new Map();
 
-    // First, process all projects and their repositories
     projects.forEach((project) => {
       const projectRepos = new Set();
       project.issues.forEach((projectIssue) => {
-        // Check if member has this issue
         const memberHasIssue = member.issues.some(
           (memberIssue) =>
             memberIssue.number === projectIssue.number &&
@@ -267,23 +109,151 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
     return Array.from(projectRepoMap.values());
   };
 
-  // Function to generate nodes and edges from filtered members
+  // Get detailed node info for modal
+  const getNodeDetailedInfo = (nodeId: string, nodeType: string, nodeData: any) => {
+    if (nodeType === "member") {
+      const member = nodeData.member;
+      const openIssues = member.issues.filter((issue: any) => issue.state === "open");
+      const closedIssues = member.issues.filter((issue: any) => issue.state === "closed");
+      
+      return {
+        ...member,
+        detailedStats: {
+          totalIssues: member.issues.length,
+          openIssues: openIssues.length,
+          closedIssues: closedIssues.length,
+          totalCommits: member.codeStats.totalCommits,
+          openIssuesList: openIssues,
+          closedIssuesList: closedIssues
+        }
+      };
+    } else if (nodeType === "project") {
+      const project = nodeData.project;
+      const openIssues = project.issues.filter((issue: any) => issue.state === "open");
+      const closedIssues = project.issues.filter((issue: any) => issue.state === "closed");
+      
+      return {
+        ...project,
+        detailedStats: {
+          totalIssues: project.issues.length,
+          openIssues: openIssues.length,
+          closedIssues: closedIssues.length,
+          openIssuesList: openIssues,
+          closedIssuesList: closedIssues
+        }
+      };
+    } else if (nodeType === "repo") {
+      // Find issues for this specific repository across all members
+      const repoName = nodeData.repo;
+      const allIssuesForRepo: any[] = [];
+      
+      props.members.forEach(member => {
+        const repoIssues = member.issues.filter(issue => issue.repository.name === repoName);
+        allIssuesForRepo.push(...repoIssues);
+      });
+      
+      // Remove duplicates based on issue number
+      const uniqueIssues = allIssuesForRepo.filter((issue, index, self) => 
+        index === self.findIndex(i => i.number === issue.number)
+      );
+      
+      const openIssues = uniqueIssues.filter(issue => issue.state === "open");
+      const closedIssues = uniqueIssues.filter(issue => issue.state === "closed");
+      
+      return {
+        name: repoName,
+        detailedStats: {
+          totalIssues: uniqueIssues.length,
+          openIssues: openIssues.length,
+          closedIssues: closedIssues.length,
+          openIssuesList: openIssues,
+          closedIssuesList: closedIssues
+        }
+      };
+    }
+    
+    return nodeData;
+  };
+
   const generateTopologyData = createMemo(() => {
-    // console.log('Memulai pembuatan data topologi...');
     const nodes: any[] = [];
     const edges: any[] = [];
     let memberYOffset = 10;
 
-    // Log filtered members
-    // console.log('Member yang difilter:', filteredMembers());
+    // Filter members first - only show members that have matching entities for the current filter
+    const filteredMembers = props.members.filter(member => {
+      if (stateFilter() === "all") {
+        return true; // Show all members when filter is "all"
+      }
 
-    filteredMembers().forEach((member) => {
-      const memberData = getMemberMetadata(member, filteredProjects());
-      console.log(`Metadata untuk ${member.member.login}:`, memberData);
+      const memberProjects = props.projects.filter(project =>
+        project.issues.some(projectIssue =>
+          member.issues.some(memberIssue =>
+            memberIssue.number === projectIssue.number &&
+            memberIssue.repository.name === projectIssue.repository
+          )
+        )
+      );
 
-      const memberSpacing = 150; // Reduced from 200 to 150
+      // Check if member has any projects/repos that match the filter
+      const hasMatchingEntities = memberProjects.some(project => {
+        const projectHasOpenIssues = hasOpenIssuesForMember(project, member);
+        const anyRepoHasOpenIssues = hasOpenRepoIssuesForMember(project, member);
+        
+        if (stateFilter() === "hasOpenIssues") {
+          // Member should be shown if they have any red project or red repo
+          const hasRedProject = projectHasOpenIssues || anyRepoHasOpenIssues;
+          const hasRedRepo = project.issues.some(projectIssue => {
+            const repoName = projectIssue.repository;
+            return member.issues
+              .filter(issue => issue.repository.name === repoName)
+              .some(issue => issue.state === "open");
+          });
+          return hasRedProject || hasRedRepo;
+        } else if (stateFilter() === "noOpenIssues") {
+          // Member should be shown if they have any purple project or green repo
+          const hasNonRedProject = !projectHasOpenIssues && !anyRepoHasOpenIssues;
+          const hasGreenRepo = project.issues.some(projectIssue => {
+            const repoName = projectIssue.repository;
+            const repoIssues = member.issues.filter(issue => issue.repository.name === repoName);
+            return repoIssues.length > 0 && repoIssues.every(issue => issue.state === "closed");
+          });
+          return hasNonRedProject || hasGreenRepo;
+        }
+        return true;
+      });
 
-      // Create member node with even smaller size
+      return hasMatchingEntities;
+    });
+
+    filteredMembers.forEach((member) => {
+      const memberData = getMemberMetadata(member, props.projects);
+      const memberSpacing = 150;
+
+      // Filter member data based on state filter
+      const filteredMemberData = memberData.filter((data) => {
+        const currentProject = props.projects.find(p => p.name === data.project.label);
+        if (!currentProject) return false;
+
+        const projectHasOpenIssues = hasOpenIssuesForMember(currentProject, member);
+        const anyRepoHasOpenIssues = hasOpenRepoIssuesForMember(currentProject, member);
+        const shouldBeRed = projectHasOpenIssues || anyRepoHasOpenIssues;
+
+        // Apply state filter to projects
+        if (stateFilter() === "hasOpenIssues") {
+          return shouldBeRed; // Only show red projects
+        } else if (stateFilter() === "noOpenIssues") {
+          return !shouldBeRed; // Only show purple projects
+        }
+        return true; // Show all if filter is "all"
+      });
+
+      // Skip member if no projects match the filter
+      if (filteredMemberData.length === 0 && stateFilter() !== "all") {
+        return;
+      }
+
+      // Create member node
       const memberNode = {
         id: `member-${member.member.login}`,
         position: { x: 50, y: memberYOffset + 50 },
@@ -296,22 +266,14 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
                 handleNodeClick({
                   id: `member-${member.member.login}`,
                   type: "member",
-                  data: {
-                    content: {
-                      props: {
-                        children: [
-                          { props: { src: member.member.avatar_url } },
-                          { props: { children: member.member.login } },
-                        ],
-                      },
-                    },
-                  },
+                  data: { member }
                 })
               }
             >
               <img
                 src={member.member.avatar_url}
                 class="w-5 h-5 rounded-full border border-blue-300"
+                loading="lazy"
               />
               <span class="text-xs font-medium truncate max-w-[80px]">
                 {member.member.login}
@@ -324,37 +286,21 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
       };
       nodes.push(memberNode);
 
-      // Calculate spacing
-      // const maxReposPerProject = Math.max(...memberData.map(data => data.repositories.length), 1);
-      const nodeSpacing = 100; // Reduced from 80 to 60
+      const nodeSpacing = 100;
 
-      // Create project and repository nodes
-      memberData.forEach((data, projectIndex) => {
-        const projectYPos = memberYOffset + projectIndex * nodeSpacing * 1.2; // Reduced multiplier from 1.5 to 1.2
+      // Create project and repository nodes (only for filtered data)
+      filteredMemberData.forEach((data, projectIndex) => {
+        const projectYPos = memberYOffset + projectIndex * nodeSpacing * 1.2;
+        const currentProject = props.projects.find(p => p.name === data.project.label);
 
-        // console.log('[MappingTopology304] data -> ', data);
+        if (!currentProject) return;
 
-        // Check if this project has any open issues from this author
-        const projectHasOpenIssues = props.projects
-          .find((p) => p.name === data.project.label)
-          ?.issues.filter((issue) =>
-            member.issues.some((mi) => mi.number === issue.number)
-          )
-          .some((issue) => issue.state === "open");
+        // Determine color based on open issues
+        const projectHasOpenIssues = hasOpenIssuesForMember(currentProject, member);
+        const anyRepoHasOpenIssues = hasOpenRepoIssuesForMember(currentProject, member);
+        const shouldBeRed = projectHasOpenIssues || anyRepoHasOpenIssues;
 
-        // Also check if any repositories in this project have open issues
-        const anyRepoInProjectHasOpenIssues = data.repositories.some(
-          (repo: { label: string; href: string }) =>
-            member.issues
-              .filter((issue) => issue.repository.name === repo.label)
-              .some((issue) => issue.state === "open")
-        );
-
-        // Project is red if it has open issues or any of its repos have open issues
-        const shouldBeRed =
-          projectHasOpenIssues || anyRepoInProjectHasOpenIssues;
-
-        // Create project node with smaller size
+        // Create project node
         const projectNode = {
           id: `project-${member.member.login}-${projectIndex}`,
           position: { x: 350, y: projectYPos + 50 },
@@ -364,34 +310,18 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
               <div
                 class={`py-1 px-2 ${
                   shouldBeRed
-                    ? "bg-red-100 hover:bg-red-200"
-                    : "bg-purple-100 hover:bg-purple-200"
-                } rounded-md shadow-sm cursor-pointer border ${
-                  shouldBeRed ? "border-red-400" : "border-purple-400"
-                }`}
+                    ? "bg-red-100 hover:bg-red-200 border-red-400 text-red-800"
+                    : "bg-purple-100 hover:bg-purple-200 border-purple-400 text-purple-800"
+                } rounded-md shadow-sm cursor-pointer border`}
                 onClick={() =>
                   handleNodeClick({
                     id: `project-${member.member.login}-${projectIndex}`,
                     type: "project",
-                    data: {
-                      content: {
-                        props: {
-                          children: {
-                            props: {
-                              children: data.project.label,
-                            },
-                          },
-                        },
-                      },
-                    },
+                    data: { project: currentProject }
                   })
                 }
               >
-                <span
-                  class={`text-xs font-medium truncate max-w-[200px] block ${
-                    shouldBeRed ? "text-red-800" : "text-purple-800"
-                  }`}
-                >
+                <span class="text-xs font-medium truncate max-w-[200px] block">
                   {data.project.label}
                 </span>
               </div>
@@ -412,16 +342,32 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
           type: "smoothstep",
         });
 
-        // Create repository nodes for this project with smaller size and zigzag pattern
-        data.repositories.forEach(
+        // Filter repositories based on state filter
+        const filteredRepositories = data.repositories.filter(
+          (repo: { label: string; href: string }) => {
+            const repoHasOpenIssues = member.issues
+              .filter((issue) => issue.repository.name === repo.label)
+              .some((issue) => issue.state === "open");
+
+            // Apply state filter to repositories
+            if (stateFilter() === "hasOpenIssues") {
+              return repoHasOpenIssues; // Only show red repositories
+            } else if (stateFilter() === "noOpenIssues") {
+              return !repoHasOpenIssues; // Only show green repositories
+            }
+            return true; // Show all if filter is "all"
+          }
+        );
+
+        // Create repository nodes (only for filtered repositories)
+        filteredRepositories.forEach(
           (repo: { label: string; href: string }, repoIndex: number) => {
-            // Calculate zigzag offset based on index
             const isEven = repoIndex % 2 === 0;
-            const horizontalOffset = isEven ? 0 : 160; // Offset for odd numbered repos
-            const verticalSpacing = nodeSpacing * 0.8; // Tighter vertical spacing
+            const horizontalOffset = isEven ? 0 : 160;
+            const verticalSpacing = nodeSpacing * 0.8;
             const repoYPos = projectYPos + repoIndex * verticalSpacing;
 
-            // Check if this repository has any open issues for this author
+            // Check if this repository has open issues
             const repoHasOpenIssues = member.issues
               .filter((issue) => issue.repository.name === repo.label)
               .some((issue) => issue.state === "open");
@@ -438,34 +384,18 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
                   <div
                     class={`py-1 px-2 ${
                       repoHasOpenIssues
-                        ? "bg-red-100 hover:bg-red-200"
-                        : "bg-green-100 hover:bg-green-200"
-                    } rounded-md shadow-sm cursor-pointer border ${
-                      repoHasOpenIssues ? "border-red-400" : "border-green-400"
-                    }`}
+                        ? "bg-red-100 hover:bg-red-200 border-red-400 text-red-800"
+                        : "bg-green-100 hover:bg-green-200 border-green-400 text-green-800"
+                    } rounded-md shadow-sm cursor-pointer border`}
                     onClick={() =>
                       handleNodeClick({
                         id: `repo-${member.member.login}-${projectIndex}-${repoIndex}`,
                         type: "repo",
-                        data: {
-                          content: {
-                            props: {
-                              children: {
-                                props: {
-                                  children: repo.label,
-                                },
-                              },
-                            },
-                          },
-                        },
+                        data: { repo: repo.label }
                       })
                     }
                   >
-                    <span
-                      class={`text-xs font-medium truncate max-w-[200px] block ${
-                        repoHasOpenIssues ? "text-red-800" : "text-green-800"
-                      }`}
-                    >
+                    <span class="text-xs font-medium truncate max-w-[200px] block">
                       {repo.label}
                     </span>
                   </div>
@@ -476,7 +406,7 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
             };
             nodes.push(repoNode);
 
-            // Connect project to repository with curved edges
+            // Connect project to repository
             edges.push({
               id: `edge-project-${member.member.login}-${projectIndex}-repo-${repoIndex}`,
               sourceNode: projectNode.id,
@@ -489,767 +419,215 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
         );
       });
 
-      // Calculate next member's starting Y position with adjusted spacing for zigzag
-      const totalProjectHeight = memberData.length * nodeSpacing * 1.5; // Increased multiplier for zigzag
+      const totalProjectHeight = filteredMemberData.length * nodeSpacing * 1.5;
       memberYOffset += Math.max(totalProjectHeight, memberSpacing);
     });
-
-    // Update total height needed with adjusted minimum for zigzag layout
-    setTotalHeight(Math.max(700, memberYOffset + 100));
-
-    // console.log('Nodes yang dihasilkan:', nodes);
-    // console.log('Edges yang dihasilkan:', edges);
-    console.log("Data Topologi Lengkap:", { nodes, edges });
 
     return { nodes, edges };
   });
 
-  const [nodes, setNodes] = createSignal(generateTopologyData().nodes);
-  const [edges, setEdges] = createSignal(generateTopologyData().edges);
-
-  // // Tambahkan console log untuk melihat data
-  // console.log('Data Nodes:', nodes());
-  // console.log('Data Edges:', edges());
-  // console.log('Data Topologi Lengkap:', generateTopologyData());
-
-  // // Jika ingin melihat data props yang masuk
-  // console.log('Data Member:', props.members);
-  // console.log('Data Projects:', props.projects);
+  // Update nodes and edges when topology data changes
+  createEffect(() => {
+    const topologyData = generateTopologyData();
+    setNodes(topologyData.nodes);
+    setEdges(topologyData.edges);
+  });
 
   const handleNodesChange = (newNodes: any[]) => {
-    // Check if any node position has changed significantly
-    const hasPositionChanged = newNodes.some((node) => {
-      const lastPos = lastNodePosition()[node.id];
-      if (!lastPos) return false;
-      const dx = Math.abs(lastPos.x - node.position.x);
-      const dy = Math.abs(lastPos.y - node.position.y);
-      return dx > 5 || dy > 5; // Threshold for considering it a drag
-    });
-
-    if (hasPositionChanged) {
-      setIsDragging(true);
-    } else if (!isDragging()) {
-      // If not dragging and positions haven't changed, it's a click
-      const clickedNode = newNodes.find((node) => {
-        const lastPos = lastNodePosition()[node.id];
-        return (
-          lastPos &&
-          Math.abs(lastPos.x - node.position.x) < 5 &&
-          Math.abs(lastPos.y - node.position.y) < 5
-        );
-      });
-
-      if (clickedNode) {
-        setSelectedNode(clickedNode);
-        setIsModalOpen(true);
-      }
-    }
-
-    // Update last known positions
-    const newPositions = newNodes.reduce((acc, node) => {
-      acc[node.id] = { x: node.position.x, y: node.position.y };
-      return acc;
-    }, {} as { [key: string]: { x: number; y: number } });
-    setLastNodePosition(newPositions);
-
-    // console.log('[MappingTopology290425] newNodes',newNodes);
-
     setNodes(newNodes);
   };
 
-  // Reset dragging state when mouse is released
+  const handleNodeClick = (node: any) => {
+    console.log("Node clicked:", node);
+    setSelectedNode(node);
+    setIsModalOpen(true);
+  };
+
+  // Click outside handler for dropdown
   onMount(() => {
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    // Removed unused ClickOutsideEvent interface
-
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
-      const statusDropdown = document.querySelector(
-        ".status-dropdown"
-      ) as HTMLElement | null;
-      const stateDropdown = document.querySelector(
-        ".state-dropdown"
-      ) as HTMLElement | null;
+      const dropdown = document.querySelector(".filter-dropdown") as HTMLElement | null;
 
-      if (target && statusDropdown && !statusDropdown.contains(target)) {
-        setIsStatusDropdownOpen(false);
-      }
-      if (target && stateDropdown && !stateDropdown.contains(target)) {
-        setIsStateDropdownOpen(false);
+      if (target && dropdown && !dropdown.contains(target)) {
+        setIsFilterDropdownOpen(false);
       }
     };
 
     document.addEventListener("click", handleClickOutside);
-
-    window.addEventListener("mouseup", handleMouseUp);
+    
     return () => {
       document.removeEventListener("click", handleClickOutside);
-      window.removeEventListener("mouseup", handleMouseUp);
     };
   });
-
-  const handleNodeClick = (node: any) => {
-    console.log("Node yang diklik:", node);
-    console.log("Tipe node:", node.type);
-    console.log("Data node:", node.data);
-
-    setSelectedNode(node);
-    setIsModalOpen(true);
-  };
 
   const renderNodeDetails = () => {
     const node = selectedNode();
     if (!node) return null;
 
     const nodeType = node.type;
-    const nodeData = node.data;
+    const detailedInfo = getNodeDetailedInfo(node.id, nodeType, node.data);
 
     switch (nodeType) {
       case "member":
-        const member: any = props.members.find(
-          (m) =>
-            m.member.login === nodeData.content.props.children[1].props.children
-        );
         return (
-          <div class="flex gap-8 w-full">
-            {/* Left Column - Profile & Basic Stats */}
-            <div class="w-1/4 space-y-6">
-              <div class="flex flex-col items-center p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl shadow-sm">
-                <img
-                  src={nodeData.content.props.children[0].props.src}
-                  class="w-32 h-32 rounded-full border-4 border-blue-500 shadow-lg"
-                />
-                <div class="mt-4 text-center">
-                  <h2 class="text-2xl font-fightree font-bold text-blue-600">
-                    {member?.member.login}
-                  </h2>
-                  <p class="text-sm font-fightree text-gray-600 mt-1">
-                    Type: {member?.type || "Contributor"}
-                  </p>
-                  <div class="flex gap-2 mt-3 justify-center">
-                    <Badge colorScheme="blue" class="px-3 py-1 rounded-full">
-                      Contributor
-                    </Badge>
-                    <Badge colorScheme="green" class="px-3 py-1 rounded-full">
-                      Active
-                    </Badge>
-                  </div>
-                </div>
+          <div class="p-6">
+            <div class="flex items-center gap-4 mb-6">
+              <img
+                src={detailedInfo.member.avatar_url}
+                class="w-16 h-16 rounded-full border-2 border-blue-500"
+              />
+              <div>
+                <h2 class="text-xl font-bold text-blue-600">
+                  {detailedInfo.member.login}
+                </h2>
+                <p class="text-gray-600">Team Member</p>
               </div>
-
-              {/* Code Stats Summary */}
-              <div class="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl shadow-sm space-y-4">
-                <h3 class="text-lg font-fightree font-bold text-gray-800 border-b border-gray-200 pb-2">
-                  Code Statistics
-                </h3>
-                <div class="space-y-3">
-                  <div class="flex justify-between items-center">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Lines Added
-                    </span>
-                    <span class="text-sm font-fightree font-bold text-green-600">
-                      +{member?.codeStats.linesAdded || 0}
-                    </span>
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Lines Deleted
-                    </span>
-                    <span class="text-sm font-fightree font-bold text-red-600">
-                      -{member?.codeStats.linesDeleted || 0}
-                    </span>
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Files Changed
-                    </span>
-                    <span class="text-sm font-fightree font-bold text-blue-600">
-                      {member?.codeStats.filesChanged || 0}
-                    </span>
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Total PRs
-                    </span>
-                    <span class="text-sm font-fightree font-bold text-purple-600">
-                      {member?.codeStats.totalPRs || 0}
-                    </span>
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Total Commits
-                    </span>
-                    <span class="text-sm font-fightree font-bold text-indigo-600">
-                      {member?.codeStats.totalCommits || 0}
-                    </span>
-                  </div>
-                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+              <div class="p-4 bg-blue-50 rounded-lg">
+                <p class="text-sm text-gray-600">Total Commits</p>
+                <p class="text-xl font-bold text-blue-600">
+                  {detailedInfo.detailedStats.totalCommits}
+                </p>
               </div>
-
-              {/* Issue Stats */}
-              <div class="p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl shadow-sm space-y-4">
-                <h3 class="text-lg font-fightree font-bold text-gray-800 border-b border-gray-200 pb-2">
-                  Issue Statistics
-                </h3>
-                <div class="space-y-3">
-                  <div class="flex justify-between items-center">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Open Issues
-                    </span>
-                    <span class="text-sm font-fightree font-bold text-green-600">
-                      {member?.issueStats?.open || 0}
-                    </span>
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Closed Issues
-                    </span>
-                    <span class="text-sm font-fightree font-bold text-red-600">
-                      {member?.issueStats?.closed || 0}
-                    </span>
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-sm font-fightree text-gray-600">
-                      In Progress
-                    </span>
-                    <span class="text-sm font-fightree font-bold text-yellow-600">
-                      {member?.issueStats?.inProgress || 0}
-                    </span>
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Total Issues
-                    </span>
-                    <span class="text-sm font-fightree font-bold text-blue-600">
-                      {member?.issueStats?.total || 0}
-                    </span>
-                  </div>
-                </div>
+              <div class="p-4 bg-gray-50 rounded-lg">
+                <p class="text-sm text-gray-600">Total Issues</p>
+                <p class="text-xl font-bold text-gray-600">
+                  {detailedInfo.detailedStats.totalIssues}
+                </p>
+              </div>
+              <div class="p-4 bg-red-50 rounded-lg">
+                <p class="text-sm text-gray-600">Open Issues</p>
+                <p class="text-xl font-bold text-red-600">
+                  {detailedInfo.detailedStats.openIssues}
+                </p>
+              </div>
+              <div class="p-4 bg-green-50 rounded-lg">
+                <p class="text-sm text-gray-600">Closed Issues</p>
+                <p class="text-xl font-bold text-green-600">
+                  {detailedInfo.detailedStats.closedIssues}
+                </p>
               </div>
             </div>
 
-            {/* Middle Column - Tasks & Activity */}
-            <div class="w-2/5 space-y-6">
-              {/* Task Statistics */}
-              <div class="p-6 bg-gradient-to-br from-green-50 to-teal-50 rounded-xl shadow-sm">
-                <h3 class="text-lg font-fightree font-bold text-gray-800 border-b border-gray-200 pb-2 mb-4">
-                  Task Statistics
-                </h3>
-                <div class="grid grid-cols-2 gap-4">
-                  <div class="p-4 bg-white/60 rounded-lg">
-                    <p class="text-sm font-fightree text-gray-600">
-                      Completed Tasks
-                    </p>
-                    <p class="text-2xl font-fightree font-bold text-green-600">
-                      {member?.taskStats?.completed || 0}
-                    </p>
-                    <div class="h-2 bg-gray-200 rounded-full mt-2">
-                      <div
-                        class="h-2 bg-green-500 rounded-full"
-                        style={{
-                          width: `${
-                            ((member?.taskStats?.completed || 0) /
-                              (member?.taskStats?.total || 1)) *
-                            100
-                          }%`,
-                        }}
-                      />
+            {detailedInfo.detailedStats.openIssues > 0 && (
+              <div class="mt-4">
+                <h3 class="text-sm font-semibold text-red-600 mb-2">Recent Open Issues:</h3>
+                <div class="max-h-32 overflow-y-auto space-y-1">
+                  {detailedInfo.detailedStats.openIssuesList.slice(0, 5).map((issue: any) => (
+                    <div class="text-xs p-2 bg-red-50 rounded border-l-2 border-red-400">
+                      <div class="font-medium">#{issue.number}</div>
+                      <div class="text-gray-600 truncate">{issue.title}</div>
+                      <div class="text-gray-500">in {issue.repository.name}</div>
                     </div>
-                  </div>
-                  <div class="p-4 bg-white/60 rounded-lg">
-                    <p class="text-sm font-fightree text-gray-600">
-                      In Progress
-                    </p>
-                    <p class="text-2xl font-fightree font-bold text-yellow-600">
-                      {member?.taskStats?.inProgress || 0}
-                    </p>
-                    <div class="h-2 bg-gray-200 rounded-full mt-2">
-                      <div
-                        class="h-2 bg-yellow-500 rounded-full"
-                        style={{
-                          width: `${
-                            ((member?.taskStats?.inProgress || 0) /
-                              (member?.taskStats?.total || 1)) *
-                            100
-                          }%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div class="p-4 bg-white/60 rounded-lg">
-                    <p class="text-sm font-fightree text-gray-600">
-                      Pending Review
-                    </p>
-                    <p class="text-2xl font-fightree font-bold text-orange-600">
-                      {member?.taskStats?.pendingReview || 0}
-                    </p>
-                    <div class="h-2 bg-gray-200 rounded-full mt-2">
-                      <div
-                        class="h-2 bg-orange-500 rounded-full"
-                        style={{
-                          width: `${
-                            ((member?.taskStats?.pendingReview || 0) /
-                              (member?.taskStats?.total || 1)) *
-                            100
-                          }%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div class="p-4 bg-white/60 rounded-lg">
-                    <p class="text-sm font-fightree text-gray-600">
-                      Total Tasks
-                    </p>
-                    <p class="text-2xl font-fightree font-bold text-blue-600">
-                      {member?.taskStats?.total || 0}
-                    </p>
-                    <div class="h-2 bg-gray-200 rounded-full mt-2">
-                      <div
-                        class="h-2 bg-blue-500 rounded-full"
-                        style={{ width: "100%" }}
-                      />
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Recent Activity Timeline */}
-              <div class="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-sm space-y-4">
-                <div class="flex justify-between items-center border-b border-gray-200 pb-2">
-                  <h3 class="text-lg font-fightree font-bold text-gray-800">
-                    Recent Activity
-                  </h3>
-                  <Badge colorScheme="blue" class="px-3 py-1">
-                    Last {member?.issues.length || 0} Activities
-                  </Badge>
-                </div>
-                <div class="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                  <For each={member?.issues.slice(0, 8)}>
-                    {(issue) => (
-                      <div class="p-4 bg-white rounded-lg hover:shadow-md transition-all border border-gray-100">
-                        <div class="flex justify-between items-center">
-                          <div class="flex items-center gap-3">
-                            <div
-                              class={`w-2 h-2 rounded-full ${
-                                issue.state === "open"
-                                  ? "bg-green-500"
-                                  : "bg-red-500"
-                              }`}
-                            />
-                            <p class="text-sm font-fightree font-medium">
-                              {issue.title}
-                            </p>
-                          </div>
-                          <Badge
-                            colorScheme={
-                              issue.state === "open" ? "green" : "red"
-                            }
-                            class="px-3 py-1 rounded-full"
-                          >
-                            {issue.state}
-                          </Badge>
-                        </div>
-                        <div class="mt-2 flex justify-between items-center text-xs font-fightree text-gray-500">
-                          <div class="flex items-center gap-4">
-                            <span>Repository: {issue.repository.name}</span>
-                            <span>#{issue.number}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </For>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column - Repository Stats */}
-            <div class="w-1/3 space-y-6">
-              {/* Repository Contributions */}
-              <div class="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-sm space-y-4">
-                <h3 class="text-lg font-fightree font-bold text-gray-800 border-b border-gray-200 pb-2">
-                  Repository Activity
-                </h3>
-                <div class="grid grid-cols-1 gap-4">
-                  <For
-                    each={Array.from(
-                      new Set(
-                        member?.issues.map(
-                          (i: { repository: { name: any } }) =>
-                            i.repository.name
-                        )
-                      )
-                    )}
-                  >
-                    {(repoName) => {
-                      const repoIssues = member?.issues.filter(
-                        (i: { repository: { name: unknown } }) =>
-                          i.repository.name === repoName
-                      );
-                      const openIssues =
-                        repoIssues?.filter(
-                          (i: { state: string }) => i.state === "open"
-                        ).length || 0;
-                      const closedIssues =
-                        repoIssues?.filter(
-                          (i: { state: string }) => i.state === "closed"
-                        ).length || 0;
-                      const totalIssues = openIssues + closedIssues;
-
-                      return (
-                        <div class="p-4 bg-white rounded-lg border border-gray-100">
-                          <div class="flex justify-between items-center mb-2">
-                            <h4 class="font-fightree font-bold text-gray-700">
-                              {repoName as string}
-                            </h4>
-                            <Badge
-                              colorScheme="purple"
-                              class="px-2 py-0.5 text-xs rounded-full"
-                            >
-                              {totalIssues} issues
-                            </Badge>
-                          </div>
-                          <div class="space-y-2">
-                            <div class="flex justify-between items-center text-sm">
-                              <span class="text-gray-600">Open</span>
-                              <div class="flex items-center gap-2">
-                                <div class="w-24 h-2 bg-gray-200 rounded-full">
-                                  <div
-                                    class="h-2 bg-green-500 rounded-full"
-                                    style={{
-                                      width: `${
-                                        (openIssues / totalIssues) * 100
-                                      }%`,
-                                    }}
-                                  />
-                                </div>
-                                <span class="font-medium text-green-600">
-                                  {openIssues}
-                                </span>
-                              </div>
-                            </div>
-                            <div class="flex justify-between items-center text-sm">
-                              <span class="text-gray-600">Closed</span>
-                              <div class="flex items-center gap-2">
-                                <div class="w-24 h-2 bg-gray-200 rounded-full">
-                                  <div
-                                    class="h-2 bg-red-500 rounded-full"
-                                    style={{
-                                      width: `${
-                                        (closedIssues / totalIssues) * 100
-                                      }%`,
-                                    }}
-                                  />
-                                </div>
-                                <span class="font-medium text-red-600">
-                                  {closedIssues}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }}
-                  </For>
-                </div>
-              </div>
-
-              {/* Additional Stats or Charts can be added here */}
-              <div class="p-6 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl shadow-sm space-y-4">
-                <h3 class="text-lg font-fightree font-bold text-gray-800 border-b border-gray-200 pb-2">
-                  Contribution Summary
-                </h3>
-                <div class="space-y-4">
-                  <div class="flex items-center justify-between p-3 bg-white rounded-lg">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Total Repositories
-                    </span>
-                    <span class="text-lg font-fightree font-bold text-purple-600">
-                      {
-                        new Set(
-                          member?.issues.map(
-                            (i: { repository: { name: any } }) =>
-                              i.repository.name
-                          )
-                        ).size
-                      }
-                    </span>
-                  </div>
-                  <div class="flex items-center justify-between p-3 bg-white rounded-lg">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Active Days
-                    </span>
-                    <span class="text-lg font-fightree font-bold text-blue-600">
-                      {member?.codeStats?.activeDays || 0}
-                    </span>
-                  </div>
-                  <div class="flex items-center justify-between p-3 bg-white rounded-lg">
-                    <span class="text-sm font-fightree text-gray-600">
-                      Avg. Daily Commits
-                    </span>
-                    <span class="text-lg font-fightree font-bold text-green-600">
-                      {(
-                        (member?.codeStats?.totalCommits || 0) /
-                        (member?.codeStats?.activeDays || 1)
-                      ).toFixed(1)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         );
 
       case "project":
-        const project = props.projects.find(
-          (p) => p.name === nodeData.content.props.children.props.children
-        );
         return (
-          <div class="flex gap-6 w-full">
-            <div class="w-1/3 flex flex-col p-6 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg">
-              <h2 class="text-2xl font-fightree font-bold text-purple-600">
-                {project?.name}
-              </h2>
-              <p class="text-sm font-fightree text-gray-600 mt-2">
-                {project?.description || "No description available"}
-              </p>
+          <div class="p-6">
+            <h2 class="text-xl font-bold text-purple-600 mb-4">
+              {detailedInfo.name}
+            </h2>
+            
+            <div class="grid grid-cols-3 gap-4 mb-6">
+              <div class="p-4 bg-gray-50 rounded-lg">
+                <p class="text-sm text-gray-600">Total Issues</p>
+                <p class="text-xl font-bold text-gray-600">
+                  {detailedInfo.detailedStats.totalIssues}
+                </p>
+              </div>
+              <div class="p-4 bg-red-50 rounded-lg">
+                <p class="text-sm text-gray-600">Open Issues</p>
+                <p class="text-xl font-bold text-red-600">
+                  {detailedInfo.detailedStats.openIssues}
+                </p>
+              </div>
+              <div class="p-4 bg-green-50 rounded-lg">
+                <p class="text-sm text-gray-600">Closed Issues</p>
+                <p class="text-xl font-bold text-green-600">
+                  {detailedInfo.detailedStats.closedIssues}
+                </p>
+              </div>
             </div>
 
-            <div class="w-2/3">
-              <div class="grid grid-cols-3 gap-4 mb-6">
-                <div class="p-4 bg-gradient-to-br from-purple-100 to-purple-50 rounded-lg shadow-sm">
-                  <p class="text-sm font-fightree text-purple-600">
-                    Total Issues
-                  </p>
-                  <p class="text-2xl font-fightree font-bold text-purple-800">
-                    {project?.issues.length}
-                  </p>
-                </div>
-                <div class="p-4 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg shadow-sm">
-                  <p class="text-sm font-fightree text-blue-600">Open Issues</p>
-                  <p class="text-2xl font-fightree font-bold text-blue-800">
-                    {project?.issues.filter((i) => i.state === "open").length}
-                  </p>
-                </div>
-                <div class="p-4 bg-gradient-to-br from-green-100 to-green-50 rounded-lg shadow-sm">
-                  <p class="text-sm font-fightree text-green-600">
-                    Closed Issues
-                  </p>
-                  <p class="text-2xl font-fightree font-bold text-green-800">
-                    {project?.issues.filter((i) => i.state === "closed").length}
-                  </p>
-                </div>
-              </div>
-
-              <div class="space-y-4">
-                <h3 class="text-lg font-fightree font-bold text-gray-800">
-                  Project Timeline
-                </h3>
-                <For each={project?.issues.slice(0, 5)}>
-                  {(issue) => (
-                    <div class="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:shadow-md transition-all">
-                      <div class="flex justify-between items-center">
-                        <p class="text-sm font-fightree font-medium">
-                          #{issue.number} - {issue.title}
-                        </p>
-                        <Badge
-                          colorScheme={issue.state === "open" ? "green" : "red"}
-                          class="px-3 py-1 rounded-full"
-                        >
-                          {issue.state}
-                        </Badge>
-                      </div>
-                      <p class="text-xs font-fightree text-gray-500 mt-1">
-                        Repository: {issue.repository}
-                      </p>
+            {detailedInfo.detailedStats.openIssues > 0 && (
+              <div class="mt-4">
+                <h3 class="text-sm font-semibold text-red-600 mb-2">Open Issues:</h3>
+                <div class="max-h-32 overflow-y-auto space-y-1">
+                  {detailedInfo.detailedStats.openIssuesList.slice(0, 5).map((issue: any) => (
+                    <div class="text-xs p-2 bg-red-50 rounded border-l-2 border-red-400">
+                      <div class="font-medium">#{issue.number}</div>
+                      <div class="text-gray-600 truncate">{issue.title}</div>
+                      <div class="text-gray-500">in {issue.repository}</div>
                     </div>
-                  )}
-                </For>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         );
 
       case "repo":
-        const repoName = nodeData.content.props.children.props.children;
-        const repoIssues = props.members.flatMap((m) =>
-          m.issues.filter((i) => i.repository.name === repoName)
-        );
-        const repoContributors = props.members.filter((m) =>
-          m.issues.some((i) => i.repository.name === repoName)
-        );
-
         return (
-          <div class="flex gap-6 w-full">
-            <div class="w-1/3 flex flex-col p-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-lg">
-              <h2 class="text-2xl font-fightree font-bold text-green-600">
-                {repoName}
-              </h2>
-              <div class="flex gap-2 mt-4">
-                <Badge colorScheme="green" class="px-3 py-1 rounded-full">
-                  Active
-                </Badge>
-                <Badge colorScheme="blue" class="px-3 py-1 rounded-full">
-                  {repoContributors.length} Contributors
-                </Badge>
+          <div class="p-6">
+            <h2 class="text-xl font-bold text-green-600 mb-4">
+              {detailedInfo.name}
+            </h2>
+            
+            <div class="grid grid-cols-3 gap-4 mb-6">
+              <div class="p-4 bg-gray-50 rounded-lg">
+                <p class="text-sm text-gray-600">Total Issues</p>
+                <p class="text-xl font-bold text-gray-600">
+                  {detailedInfo.detailedStats.totalIssues}
+                </p>
+              </div>
+              <div class="p-4 bg-red-50 rounded-lg">
+                <p class="text-sm text-gray-600">Open Issues</p>
+                <p class="text-xl font-bold text-red-600">
+                  {detailedInfo.detailedStats.openIssues}
+                </p>
+              </div>
+              <div class="p-4 bg-green-50 rounded-lg">
+                <p class="text-sm text-gray-600">Closed Issues</p>
+                <p class="text-xl font-bold text-green-600">
+                  {detailedInfo.detailedStats.closedIssues}
+                </p>
               </div>
             </div>
 
-            <div class="w-2/3">
-              <div class="grid grid-cols-3 gap-4 mb-6">
-                <div class="p-4 bg-gradient-to-br from-green-100 to-green-50 rounded-lg shadow-sm">
-                  <p class="text-sm font-fightree text-green-600">
-                    Total Issues
-                  </p>
-                  <p class="text-2xl font-fightree font-bold text-green-800">
-                    {repoIssues.length}
-                  </p>
-                </div>
-                <div class="p-4 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg shadow-sm">
-                  <p class="text-sm font-fightree text-blue-600">Open Issues</p>
-                  <p class="text-2xl font-fightree font-bold text-blue-800">
-                    {repoIssues.filter((i) => i.state === "open").length}
-                  </p>
-                </div>
-                <div class="p-4 bg-gradient-to-br from-purple-100 to-purple-50 rounded-lg shadow-sm">
-                  <p class="text-sm font-fightree text-purple-600">
-                    Contributors
-                  </p>
-                  <p class="text-2xl font-fightree font-bold text-purple-800">
-                    {repoContributors.length}
-                  </p>
+            {detailedInfo.detailedStats.openIssues > 0 && (
+              <div class="mt-4">
+                <h3 class="text-sm font-semibold text-red-600 mb-2">Open Issues:</h3>
+                <div class="max-h-32 overflow-y-auto space-y-1">
+                  {detailedInfo.detailedStats.openIssuesList.slice(0, 5).map((issue: any) => (
+                    <div class="text-xs p-2 bg-red-50 rounded border-l-2 border-red-400">
+                      <div class="font-medium">#{issue.number}</div>
+                      <div class="text-gray-600 truncate">{issue.title}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              <div class="grid grid-cols-2 gap-6">
-                <div class="space-y-4">
-                  <h3 class="text-lg font-fightree font-bold text-gray-800">
-                    Recent Activity
-                  </h3>
-                  <For each={repoIssues.slice(0, 5)}>
-                    {(issue) => (
-                      <div class="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:shadow-md transition-all">
-                        <div class="flex justify-between items-center">
-                          <p class="text-sm font-fightree font-medium">
-                            #{issue.number} - {issue.title}
-                          </p>
-                          <Badge
-                            colorScheme={
-                              issue.state === "open" ? "green" : "red"
-                            }
-                            class="px-3 py-1 rounded-full"
-                          >
-                            {issue.state}
-                          </Badge>
-                        </div>
-                        <p class="text-xs font-fightree text-gray-500 mt-1">
-                          Created by: {issue.repository.name}
-                        </p>
-                      </div>
-                    )}
-                  </For>
-                </div>
-
-                <div class="space-y-4">
-                  <h3 class="text-lg font-fightree font-bold text-gray-800">
-                    Top Contributors
-                  </h3>
-                  <For each={repoContributors.slice(0, 5)}>
-                    {(contributor) => (
-                      <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:shadow-md transition-all">
-                        <img
-                          src={contributor.member.avatar_url}
-                          class="w-10 h-10 rounded-full border-2 border-blue-300"
-                        />
-                        <div>
-                          <p class="text-sm font-fightree font-medium">
-                            {contributor.member.login}
-                          </p>
-                          <p class="text-xs font-fightree text-gray-500">
-                            {
-                              contributor.issues.filter(
-                                (i) => i.repository.name === repoName
-                              ).length
-                            }{" "}
-                            contributions
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </For>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case "issue":
-        return (
-          <div class="flex gap-6 w-full">
-            <div class="w-1/3 flex flex-col p-6 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg">
-              <h2 class="text-2xl font-fightree font-bold text-yellow-600">
-                {nodeData.content.props.children.props.children}
-              </h2>
-              <div class="flex gap-2 mt-4">
-                <Badge
-                  colorScheme={
-                    nodeData.content.props.children.props.state === "open"
-                      ? "green"
-                      : "red"
-                  }
-                  class="px-3 py-1 rounded-full"
-                >
-                  {nodeData.content.props.children.props.state}
-                </Badge>
-                <Badge colorScheme="blue" class="px-3 py-1 rounded-full">
-                  Issue
-                </Badge>
-              </div>
-            </div>
-
-            <div class="w-2/3">
-              <div class="grid grid-cols-2 gap-4 mb-6">
-                <div class="p-4 bg-gradient-to-br from-yellow-100 to-yellow-50 rounded-lg shadow-sm">
-                  <p class="text-sm font-fightree text-yellow-600">Status</p>
-                  <p class="text-2xl font-fightree font-bold text-yellow-800">
-                    {nodeData.content.props.children.props.state}
-                  </p>
-                </div>
-                <div class="p-4 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg shadow-sm">
-                  <p class="text-sm font-fightree text-blue-600">Repository</p>
-                  <p class="text-2xl font-fightree font-bold text-blue-800">
-                    {nodeData.content.props.children.props.repository?.name ||
-                      "Unknown"}
-                  </p>
-                </div>
-              </div>
-
-              <div class="space-y-4">
-                <h3 class="text-lg font-fightree font-bold text-gray-800">
-                  Issue Details
-                </h3>
-                <div class="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">
-                  <p class="text-sm font-fightree">
-                    {nodeData.content.props.children.props.body ||
-                      "No description available"}
-                  </p>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         );
 
       default:
-        return null;
+        return <div class="p-6">Details not available</div>;
     }
   };
 
   return (
-    <div class="max-w-[77vw]  h-full overflow-hidden">
-      <div class=" h-full   bg-white max-h-[80vh] rounded-lg shadow-lg overflow-hidden">
-        <div class="p-4 border-b border-gray-200 bg-white z-10 ">
+    <div class="w-full h-full overflow-hidden">
+      <div class="h-full bg-white max-h-[80vh] rounded-lg shadow-lg overflow-hidden">
+        {/* Header */}
+        <div class="p-4 border-b border-gray-200 bg-white z-10">
           <HStack spacing="4" justify="space-between">
             <HStack spacing="2">
               <div class="w-5 h-5">
@@ -1266,229 +644,161 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
               colorScheme="neutral"
             />
           </HStack>
+          
+          {/* Simplified Filter Controls */}
           <div class="mt-4 flex flex-wrap gap-4 items-center">
-            <div class="mt-4 flex flex-wrap gap-4 items-center">
-              {/* Project Status Filter - Multi-Select */}
-              <div class="relative">
-                <div class="flex items-center gap-2">
-                  <Text size="sm" class="font-medium">
-                    Status:
-                  </Text>
-                  <div class="relative">
-                    <button
-                      class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 text-sm font-medium transition-colors"
-                      onClick={() =>
-                        setIsStatusDropdownOpen(!isStatusDropdownOpen())
-                      }
+            <div class="relative filter-dropdown">
+              <div class="flex items-center gap-2">
+                <Text size="sm" class="font-medium">Filter by State:</Text>
+                <div class="relative">
+                  <button
+                    class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 text-sm font-medium transition-colors min-w-[160px] justify-between"
+                    onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen())}
+                  >
+                    <span>
+                      {stateFilter() === "all" && "All Projects"}
+                      {stateFilter() === "hasOpenIssues" && "Has Open Issues"}
+                      {stateFilter() === "noOpenIssues" && "No Open Issues"}
+                    </span>
+                    <svg
+                      class={`w-4 h-4 transition-transform ${
+                        isFilterDropdownOpen() ? "rotate-180" : ""
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      <span>
-                        {projectStatusFilter().length === 0
-                          ? "All Status"
-                          : `${projectStatusFilter().length} selected`}
-                      </span>
-                      <svg
-                        class={`w-4 h-4 transition-transform ${
-                          isStatusDropdownOpen() ? "rotate-180" : ""
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </button>
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
 
-                    {/* Dropdown Menu */}
-                    {isStatusDropdownOpen() && (
-                      <div class="absolute top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                        <div class="p-2">
-                          {["To Do", "In Progress", "Done"].map((status) => (
-                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={projectStatusFilter().includes(status)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setProjectStatusFilter([
-                                      ...projectStatusFilter(),
-                                      status,
-                                    ]);
-                                  } else {
-                                    setProjectStatusFilter(
-                                      projectStatusFilter().filter(
-                                        (s) => s !== status
-                                      )
-                                    );
-                                  }
-                                }}
-                                class="rounded border-gray-300"
-                              />
-                              <span class="text-sm">{status}</span>
-                            </label>
-                          ))}
-                        </div>
-                        <div class="border-t border-gray-100 p-2 flex gap-2">
-                          <button
-                            class="text-xs px-2 py-1 text-blue-600 hover:bg-blue-50 rounded"
-                            onClick={() => {
-                              setProjectStatusFilter([
-                                "To Do",
-                                "In Progress",
-                                "Done",
-                              ]);
-                            }}
-                          >
-                            Select All
-                          </button>
-                          <button
-                            class="text-xs px-2 py-1 text-gray-600 hover:bg-gray-50 rounded"
-                            onClick={() => {
-                              setProjectStatusFilter([]);
-                            }}
-                          >
-                            Clear
-                          </button>
-                        </div>
+                  {isFilterDropdownOpen() && (
+                    <div class="absolute top-full mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                      <div class="p-1">
+                        <button
+                          class={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded ${
+                            stateFilter() === "all" ? "bg-blue-50 text-blue-700" : ""
+                          }`}
+                          onClick={() => {
+                            setStateFilter("all");
+                            setIsFilterDropdownOpen(false);
+                          }}
+                        >
+                          <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-gray-300 rounded"></div>
+                            <span>All Projects</span>
+                          </div>
+                        </button>
+                        <button
+                          class={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded ${
+                            stateFilter() === "hasOpenIssues" ? "bg-blue-50 text-blue-700" : ""
+                          }`}
+                          onClick={() => {
+                            setStateFilter("hasOpenIssues");
+                            setIsFilterDropdownOpen(false);
+                          }}
+                        >
+                          <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-red-100 border border-red-400 rounded"></div>
+                            <span>Has Open Issues</span>
+                          </div>
+                        </button>
+                        <button
+                          class={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded ${
+                            stateFilter() === "noOpenIssues" ? "bg-blue-50 text-blue-700" : ""
+                          }`}
+                          onClick={() => {
+                            setStateFilter("noOpenIssues");
+                            setIsFilterDropdownOpen(false);
+                          }}
+                        >
+                          <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-purple-100 border border-purple-400 rounded mr-1"></div>
+                            <div class="w-3 h-3 bg-green-100 border border-green-400 rounded"></div>
+                            <span>No Open Issues</span>
+                          </div>
+                        </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
 
-              {/* Project Open/Closed Filter - Updated Styling */}
-              <div class="relative">
-                <div class="flex items-center gap-2">
-                  <Text size="sm" class="font-medium">
-                    State:
-                  </Text>
-                  <div class="relative">
-                    <button
-                      class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 text-sm font-medium transition-colors min-w-[140px] justify-between"
-                      onClick={() =>
-                        setIsStateDropdownOpen(!isStateDropdownOpen())
-                      }
-                    >
-                      <span>
-                        {projectOpenFilter() === null
-                          ? "All Projects"
-                          : projectOpenFilter()
-                          ? "Open Only"
-                          : "Closed Only"}
-                      </span>
-                      <svg
-                        class={`w-4 h-4 transition-transform ${
-                          isStateDropdownOpen() ? "rotate-180" : ""
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </button>
-
-                    {/* State Dropdown Menu */}
-                    {isStateDropdownOpen() && (
-                      <div class="absolute top-full mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                        <div class="p-1">
-                          {[
-                            { value: null, label: "All Projects" },
-                            { value: true, label: "Open Only" },
-                            { value: false, label: "Closed Only" },
-                          ].map((option) => (
-                            <button
-                              class={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded ${
-                                projectOpenFilter() === option.value
-                                  ? "bg-blue-50 text-blue-700"
-                                  : ""
-                              }`}
-                              onClick={() => {
-                                setProjectOpenFilter(option.value);
-                                setIsStateDropdownOpen(false);
-                              }}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Clear Filters Button - Keep existing styling */}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setProjectStatusFilter([]);
-                  setProjectOpenFilter(null);
-                  setIsStatusDropdownOpen(false);
-                  setIsStateDropdownOpen(false);
-                }}
-              >
-                Clear Filters
-              </Button>
+            {/* Filter Summary */}
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+              <span>Showing:</span>
+              <Badge colorScheme="blue">
+                {nodes().filter(n => n.id.startsWith('member-')).length} members
+              </Badge>
+              <Badge colorScheme="purple">
+                {nodes().filter(n => n.id.startsWith('project-')).length} projects
+              </Badge>
+              <Badge colorScheme="green">
+                {nodes().filter(n => n.id.startsWith('repo-')).length} repositories
+              </Badge>
+              {stateFilter() !== "all" && (
+                <Badge colorScheme="orange">
+                  {stateFilter() === "hasOpenIssues" ? "Red Only" : "Purple/Green Only"}
+                </Badge>
+              )}
             </div>
           </div>
-          <Box class="relative p-4" style={{ height: "calc(100vh - 100px)" }}>
-            <div class={styles.main} style={{ height: `100%` }}>
-              {filteredProjects().length === 0 ? (
-                <div class="flex items-center justify-center h-full">
-                  <div class="text-center p-8">
-                    <Text size="lg" class="font-medium text-gray-600 mb-2">
-                      No projects match the selected filters
-                    </Text>
-                    <Text size="sm" class="text-gray-500 mb-4">
-                      Try adjusting your filter criteria
-                    </Text>
-                    <Button
-                      onClick={() => {
-                        setProjectStatusFilter([]);
-                        setProjectOpenFilter(null);
-                      }}
-                      variant="outline"
-                    >
-                      Clear All Filters
-                    </Button>
-                  </div>
+        </div>
+
+        {/* Main Content - Fixed width, height scrollable */}
+        <Box class="relative p-4 overflow-x-hidden overflow-y-auto" style={{ height: "calc(100vh - 180px)", width: "100%" }}>
+          <div class={styles.main} style={{ height: "100%", width: "100%", "max-width": "75vw" }}>
+            {nodes().length === 0 ? (
+              <div class="flex items-center justify-center h-full w-full">
+                <div class="text-center p-8">
+                  <div class="text-6xl mb-4">🔍</div>
+                  <Text size="lg" class="font-medium text-gray-600 mb-2">
+                    No entities match the selected filter
+                  </Text>
+                  <Text size="sm" class="text-gray-500 mb-4">
+                    {stateFilter() === "hasOpenIssues" 
+                      ? "No red projects or repositories found"
+                      : stateFilter() === "noOpenIssues"
+                      ? "No purple/green projects or repositories found" 
+                      : "Try selecting a different state filter"
+                    }
+                  </Text>
+                  <Button
+                    onClick={() => setStateFilter("all")}
+                    variant="outline"
+                  >
+                    Show All Entities
+                  </Button>
                 </div>
-              ) : (
-                // Your existing SolidFlow component
+              </div>
+            ) : (
+              <div style={{ width: "100%", height: "100%" }}>
                 <SolidFlow
                   nodes={nodes()}
                   edges={edges()}
                   onNodesChange={handleNodesChange}
-                  onEdgesChange={(newEdges) => {
-                    setEdges(newEdges as any);
-                  }}
+                  onEdgesChange={setEdges}
                 />
-              )}
-             
-            </div>
-          </Box>
-        </div>
+              </div>
+            )}
+          </div>
+        </Box>
 
-        {/* Floating Legend Component */}
+        {/* Enhanced Floating Legend - Fixed width */}
         <div class="fixed bottom-4 right-4 z-50 pointer-events-auto">
-          <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
+          <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 min-w-[300px]">
             <div
               class="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 cursor-pointer"
               onClick={() => setShowLegend(!showLegend())}
             >
               <Text size="sm" fontWeight="bold" class="text-gray-700">
-                Color Legend
+                Color Legend & Filter Guide
               </Text>
               <div
                 class="transform transition-transform duration-200"
@@ -1515,52 +825,78 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
             <div
               class="overflow-hidden transition-all duration-300 ease-in-out"
               style={{
-                "max-height": showLegend() ? "200px" : "0px",
+                "max-height": showLegend() ? "500px" : "0px",
                 opacity: showLegend() ? "1" : "0",
               }}
             >
-              <div class="p-4 space-y-3">
-                <div class="flex items-center gap-2">
+              <div class="p-4 space-y-3 max-w-[300px]">
+                <div class="text-xs font-semibold text-gray-700 border-b pb-2">
+                  Node Types
+                </div>
+                <div class="flex items-center gap-3">
                   <div class="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
-                  <Text size="xs" class="text-gray-700">
-                    Author
-                  </Text>
+                  <Text size="xs" class="text-gray-700">Team Member (Always Blue)</Text>
                 </div>
-                <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 bg-purple-100 border border-purple-400 rounded"></div>
-                  <Text size="xs" class="text-gray-700">
-                    Project (No Open Issues)
-                  </Text>
+                
+                <div class="text-xs font-semibold text-gray-700 border-b pb-2 pt-2">
+                  Entity States
                 </div>
-                <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 bg-green-100 border border-green-400 rounded"></div>
-                  <Text size="xs" class="text-gray-700">
-                    Repository (No Open Issues)
-                  </Text>
+                <div class="space-y-2">
+                  <div class="flex items-center gap-3">
+                    <div class="w-4 h-4 bg-purple-100 border border-purple-400 rounded"></div>
+                    <Text size="xs" class="text-gray-700">Project (No Open Issues)</Text>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="w-4 h-4 bg-green-100 border border-green-400 rounded"></div>
+                    <Text size="xs" class="text-gray-700">Repository (No Open Issues)</Text>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="w-4 h-4 bg-red-100 border border-red-400 rounded"></div>
+                    <Text size="xs" class="text-gray-700">Project/Repository (Has Open Issues)</Text>
+                  </div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 bg-red-100 border border-red-400 rounded"></div>
-                  <Text size="xs" class="text-gray-700">
-                    Project/Repository (Has Open Issues)
-                  </Text>
+                
+                <div class="text-xs font-semibold text-gray-700 border-b pb-2 pt-2">
+                  Filter Effects
+                </div>
+                <div class="space-y-2">
+                  <div class="p-2 bg-gray-50 rounded text-xs">
+                    <div class="font-medium text-gray-700 mb-1">All Projects</div>
+                    <div class="text-gray-600">Shows all members and all colored entities</div>
+                  </div>
+                  <div class="p-2 bg-red-50 rounded text-xs">
+                    <div class="font-medium text-red-700 mb-1">Has Open Issues</div>
+                    <div class="text-red-600">Shows only RED projects and repositories</div>
+                  </div>
+                  <div class="p-2 bg-purple-50 rounded text-xs">
+                    <div class="font-medium text-purple-700 mb-1">No Open Issues</div>
+                    <div class="text-purple-600">Shows only PURPLE projects and GREEN repositories</div>
+                  </div>
+                </div>
+                
+                <div class="text-xs text-gray-500 mt-3 p-2 bg-blue-50 rounded border-l-2 border-blue-400">
+                  <strong>Note:</strong> Members are shown only if they have entities matching the selected filter
                 </div>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Modal */}
         <Modal
           opened={isModalOpen()}
           onClose={() => setIsModalOpen(false)}
-          size="7xl"
+          size="xl"
         >
           <ModalOverlay />
-          <ModalContent class="max-w-[90vw]">
+          <ModalContent>
             <ModalCloseButton />
-            <ModalHeader class="font-fightree text-2xl border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+            <ModalHeader class="font-fightree text-xl border-b border-gray-200">
               Node Details
             </ModalHeader>
-            <ModalBody class="p-8">{renderNodeDetails()}</ModalBody>
+            <ModalBody>
+              {renderNodeDetails()}
+            </ModalBody>
             <ModalFooter class="border-t border-gray-200">
               <HStack spacing="$4" justify="flex-end">
                 <Button
@@ -1575,9 +911,8 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
           </ModalContent>
         </Modal>
       </div>
-      ){" "}
     </div>
   );
-}; // or just }
+};
 
 export default MappingTopology;
