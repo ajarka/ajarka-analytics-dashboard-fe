@@ -64,8 +64,8 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = createSignal(false);
   const [isStateDropdownOpen, setIsStateDropdownOpen] = createSignal(false);
   const [selectedNode, setSelectedNode] = createSignal<any>(null);
-  // const [isModalOpen, setIsModalOpen] = createSignal(false);
-  // const [showLegend, setShowLegend] = createSignal(true);
+  const [isModalOpen, setIsModalOpen] = createSignal(false);
+  const [showLegend, setShowLegend] = createSignal(true);
   
   // Simplified state filter - only what's needed
   const [stateFilter, setStateFilter] = createSignal<StateFilter>("all");
