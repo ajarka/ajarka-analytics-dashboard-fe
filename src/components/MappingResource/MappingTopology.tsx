@@ -1,4 +1,4 @@
-import { Component, createMemo, createSignal, For, onMount, createEffect } from "solid-js";
+import { Component, createMemo, createSignal, onMount, createEffect } from "solid-js";
 import {
   HStack,
   Text,
@@ -17,7 +17,7 @@ import {
 import { GithubProject, MemberDetailedStats } from "../../types/github";
 import { FiActivity } from "solid-icons/fi";
 import { SolidFlow } from "solid-flow";
-import { calculateProgressStats } from "../Progress/progressUtils";
+// import { calculateProgressStats } from "../Progress/progressUtils";
 import styles from "../../styles.module.css";
 
 interface ProjectIssue {
@@ -42,27 +42,27 @@ interface MappingTopologyProps {
 // Simplified filter types based on color legend
 type StateFilter = "all" | "hasOpenIssues" | "noOpenIssues";
 const MappingTopology: Component<MappingTopologyProps> = (props) => {
-  const [projectFilter] = createSignal<string[]>([]);
-  const [repositoryFilter] = createSignal<string[]>([]);
-  const [contributionFilter] = createSignal<string[]>([]);
-  const [sortBy] = createSignal("progress");
-  const [searchQuery] = createSignal("");
-  const [_, setTotalHeight] = createSignal(1000);
+  // const [projectFilter] = createSignal<string[]>([]);
+  // const [repositoryFilter] = createSignal<string[]>([]);
+  // const [contributionFilter] = createSignal<string[]>([]);
+  // const [sortBy] = createSignal("progress");
+  // const [searchQuery] = createSignal("");
+  // const [_, setTotalHeight] = createSignal(1000);
   const [selectedNode, setSelectedNode] = createSignal<any>(null);
   const [isModalOpen, setIsModalOpen] = createSignal(false);
-  const [lastNodePosition, setLastNodePosition] = createSignal<{
-    [key: string]: { x: number; y: number };
-  }>({});
-  const [isDragging, setIsDragging] = createSignal(false);
+  // const [lastNodePosition, setLastNodePosition] = createSignal<{
+  //   [key: string]: { x: number; y: number };
+  // }>({});
+  // const [isDragging, setIsDragging] = createSignal(false);
   const [showLegend, setShowLegend] = createSignal(true);
-  const [projectStatusFilter, setProjectStatusFilter] = createSignal<string[]>(
+  const [_projectStatusFilter, _setProjectStatusFilter] = createSignal<string[]>(
     []
   );
-  const [projectOpenFilter, setProjectOpenFilter] = createSignal<
+  const [_projectOpenFilter, _setProjectOpenFilter] = createSignal<
     boolean | null
   >(null); // null = all, true = open only, false = closed only
-  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = createSignal(false);
-  const [isStateDropdownOpen, setIsStateDropdownOpen] = createSignal(false);
+  // const [isStatusDropdownOpen, setIsStatusDropdownOpen] = createSignal(false);
+  // const [isStateDropdownOpen, setIsStateDropdownOpen] = createSignal(false);
   
   // Simplified state filter - only what's needed
   const [stateFilter, setStateFilter] = createSignal<StateFilter>("all");
@@ -72,59 +72,59 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
   const [nodes, setNodes] = createSignal<any[]>([]);
   const [edges, setEdges] = createSignal<any[]>([]);
 
-  const getMemberContributionLevel = (member: MemberDetailedStats) => {
-    const totalContributions =
-      member.codeStats.totalCommits +
-      member.codeStats.totalPRs +
-      member.issues.length;
+  // const getMemberContributionLevel = (member: MemberDetailedStats) => {
+  //   const totalContributions =
+  //     member.codeStats.totalCommits +
+  //     member.codeStats.totalPRs +
+  //     member.issues.length;
 
-    if (totalContributions > 100) return "very-active";
-    if (totalContributions >= 50) return "active";
-    if (totalContributions >= 20) return "moderate";
-    return "low";
-  };
+  //   if (totalContributions > 100) return "very-active";
+  //   if (totalContributions >= 50) return "active";
+  //   if (totalContributions >= 20) return "moderate";
+  //   return "low";
+  // };
 
-  const getProjectStatus = (project: ExtendedGithubProject) => {
-    const totalIssues = project.issues.length;
-    const closedIssues = project.issues.filter(
-      (issue) => issue.state === "closed"
-    ).length;
-    const openIssues = totalIssues - closedIssues;
+  // const getProjectStatus = (project: ExtendedGithubProject) => {
+  //   const totalIssues = project.issues.length;
+  //   const closedIssues = project.issues.filter(
+  //     (issue) => issue.state === "closed"
+  //   ).length;
+  //   const openIssues = totalIssues - closedIssues;
 
-    if (totalIssues === 0) return "To Do";
-    if (closedIssues === totalIssues) return "Done";
-    if (openIssues > 0 && closedIssues > 0) return "In Progress";
-    return "To Do";
-  };
+  //   if (totalIssues === 0) return "To Do";
+  //   if (closedIssues === totalIssues) return "Done";
+  //   if (openIssues > 0 && closedIssues > 0) return "In Progress";
+  //   return "To Do";
+  // };
 
-  const isProjectOpen = (project: ExtendedGithubProject) => {
-    return project.issues.some((issue) => issue.state === "open");
-  };
+  // const isProjectOpen = (project: ExtendedGithubProject) => {
+  //   return project.issues.some((issue) => issue.state === "open");
+  // };
 
   // Filter projects based on status and open/closed state
-  const filteredProjects = createMemo(() => {
-    let filtered = [...props.projects];
+  // const filteredProjects = createMemo(() => {
+  //   let filtered = [...props.projects];
 
-    // Apply status filter
-    if (projectStatusFilter().length > 0) {
-      filtered = filtered.filter((project) =>
-        projectStatusFilter().includes(getProjectStatus(project))
-      );
-    }
+  //   // Apply status filter
+  //   if (projectStatusFilter().length > 0) {
+  //     filtered = filtered.filter((project) =>
+  //       projectStatusFilter().includes(getProjectStatus(project))
+  //     );
+  //   }
 
-    // Apply open/closed filter
-    if (projectOpenFilter() !== null) {
-      if (projectOpenFilter() === true) {
-        // Show only open projects
-        filtered = filtered.filter((project) => isProjectOpen(project));
-      } else if (projectOpenFilter() === false) {
-        // Show only closed projects
-        filtered = filtered.filter((project) => !isProjectOpen(project));
-      }
-    }
+  //   // Apply open/closed filter
+  //   if (projectOpenFilter() !== null) {
+  //     if (projectOpenFilter() === true) {
+  //       // Show only open projects
+  //       filtered = filtered.filter((project) => isProjectOpen(project));
+  //     } else if (projectOpenFilter() === false) {
+  //       // Show only closed projects
+  //       filtered = filtered.filter((project) => !isProjectOpen(project));
+  //     }
+  //   }
 
-    return filtered;
-  });
+  //   return filtered;
+  // });
   
    // Check if project has open issues for this member
   const hasOpenIssuesForMember = (project: ExtendedGithubProject, member: MemberDetailedStats): boolean => {
@@ -143,93 +143,93 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
     );
   };
 
-  const filteredMembers = createMemo(() => {
-    let filtered = [...props.members];
+  // const filteredMembers = createMemo(() => {
+  //   let filtered = [...props.members];
 
-    // Apply search filter
-    if (searchQuery()) {
-      const query = searchQuery().toLowerCase();
-      filtered = filtered.filter((member) =>
-        member.member.login.toLowerCase().includes(query)
-      );
-    }
+  //   // Apply search filter
+  //   if (searchQuery()) {
+  //     const query = searchQuery().toLowerCase();
+  //     filtered = filtered.filter((member) =>
+  //       member.member.login.toLowerCase().includes(query)
+  //     );
+  //   }
 
-    // Apply project filter
-    if (projectFilter().length > 0) {
-      filtered = filtered.filter((member) => {
-        return filteredProjects() // Use filteredProjects instead of props.projects
-          .filter((project) => projectFilter().includes(project.name))
-          .some((project) =>
-            project.issues.some((projectIssue) =>
-              member.issues.some(
-                (memberIssue) =>
-                  memberIssue.number === projectIssue.number &&
-                  memberIssue.repository.name === projectIssue.repository
-              )
-            )
-          );
-      });
-    }
+  //   // Apply project filter
+  //   if (projectFilter().length > 0) {
+  //     filtered = filtered.filter((member) => {
+  //       return filteredProjects() // Use filteredProjects instead of props.projects
+  //         .filter((project) => projectFilter().includes(project.name))
+  //         .some((project) =>
+  //           project.issues.some((projectIssue) =>
+  //             member.issues.some(
+  //               (memberIssue) =>
+  //                 memberIssue.number === projectIssue.number &&
+  //                 memberIssue.repository.name === projectIssue.repository
+  //             )
+  //           )
+  //         );
+  //     });
+  //   }
 
-    // Apply repository filter
-    if (repositoryFilter().length > 0) {
-      filtered = filtered.filter((member) =>
-        member.issues.some((issue) =>
-          repositoryFilter().includes(issue.repository.name)
-        )
-      );
-    }
+  //   // Apply repository filter
+  //   if (repositoryFilter().length > 0) {
+  //     filtered = filtered.filter((member) =>
+  //       member.issues.some((issue) =>
+  //         repositoryFilter().includes(issue.repository.name)
+  //       )
+  //     );
+  //   }
 
-    // Apply contribution level filter
-    if (contributionFilter().length > 0) {
-      filtered = filtered.filter((member) =>
-        contributionFilter().includes(getMemberContributionLevel(member))
-      );
-    }
+  //   // Apply contribution level filter
+  //   if (contributionFilter().length > 0) {
+  //     filtered = filtered.filter((member) =>
+  //       contributionFilter().includes(getMemberContributionLevel(member))
+  //     );
+  //   }
 
-    // Apply sorting
-    switch (sortBy()) {
-      case "name":
-        filtered.sort((a, b) => a.member.login.localeCompare(b.member.login));
-        break;
-      case "commits":
-        filtered.sort(
-          (a, b) => b.codeStats.totalCommits - a.codeStats.totalCommits
-        );
-        break;
-      case "pull-requests":
-        filtered.sort((a, b) => b.codeStats.totalPRs - a.codeStats.totalPRs);
-        break;
-      case "issues":
-        filtered.sort((a, b) => b.issues.length - a.issues.length);
-        break;
-      case "activity":
-        filtered.sort((a, b) => {
-          const activityMapValue = {
-            "very-active": 4,
-            active: 3,
-            moderate: 2,
-            low: 1,
-          };
-          return (
-            activityMapValue[getMemberContributionLevel(b)] -
-            activityMapValue[getMemberContributionLevel(a)]
-          );
-        });
-        break;
-      case "progress":
-        filtered.sort((a, b) => {
-          const progressA = calculateProgressStats(a.issues);
-          const progressB = calculateProgressStats(b.issues);
-          return progressB.issues.percentage - progressA.issues.percentage;
-        });
-        break;
-    }
+  //   // Apply sorting
+  //   switch (sortBy()) {
+  //     case "name":
+  //       filtered.sort((a, b) => a.member.login.localeCompare(b.member.login));
+  //       break;
+  //     case "commits":
+  //       filtered.sort(
+  //         (a, b) => b.codeStats.totalCommits - a.codeStats.totalCommits
+  //       );
+  //       break;
+  //     case "pull-requests":
+  //       filtered.sort((a, b) => b.codeStats.totalPRs - a.codeStats.totalPRs);
+  //       break;
+  //     case "issues":
+  //       filtered.sort((a, b) => b.issues.length - a.issues.length);
+  //       break;
+  //     case "activity":
+  //       filtered.sort((a, b) => {
+  //         const activityMapValue = {
+  //           "very-active": 4,
+  //           active: 3,
+  //           moderate: 2,
+  //           low: 1,
+  //         };
+  //         return (
+  //           activityMapValue[getMemberContributionLevel(b)] -
+  //           activityMapValue[getMemberContributionLevel(a)]
+  //         );
+  //       });
+  //       break;
+  //     case "progress":
+  //       filtered.sort((a, b) => {
+  //         const progressA = calculateProgressStats(a.issues);
+  //         const progressB = calculateProgressStats(b.issues);
+  //         return progressB.issues.percentage - progressA.issues.percentage;
+  //       });
+  //       break;
+  //   }
 
-    // console.log("filtered -> ", JSON.stringify(filtered));
+  //   // console.log("filtered -> ", JSON.stringify(filtered));
 
-    return filtered;
-  });
+  //   return filtered;
+  // });
 
   const getMemberMetadata = (
     member: MemberDetailedStats,
@@ -274,7 +274,7 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
   };
 
   // Get detailed node info for modal
-  const getNodeDetailedInfo = (nodeId: string, nodeType: string, nodeData: any) => {
+  const getNodeDetailedInfo = (_nodeId: string, nodeType: string, nodeData: any) => {
     if (nodeType === "member") {
       const member = nodeData.member;
       const openIssues = member.issues.filter((issue: any) => issue.state === "open");
