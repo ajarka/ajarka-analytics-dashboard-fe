@@ -44,7 +44,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([
-                        string(credentialsId: 'SST_GITHUB_TOKEN', variable: 'GITHUB_TOKEN')
+                        string(credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN')
                     ])
                     
                     try {
