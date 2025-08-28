@@ -17,7 +17,8 @@
       "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
       "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
       "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
-      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)"
+      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Bash(npx json-server:*)"
     ],
     "deny": [],
     "ask": []

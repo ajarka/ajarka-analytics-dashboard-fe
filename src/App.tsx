@@ -7,7 +7,7 @@ import { ResourceUtilization } from './pages/ResourceUtilization';
 import { ComparativeAnalysis } from './pages/ComparativeAnalysis';
 import { useGithubData } from './hooks/useGithubData';
 import { Component, createSignal, onMount } from 'solid-js';
-import { AuthProvider, OAuthCallbackPage } from './auth/AuthContext';
+import { AuthProvider, OAuthCallbackPage, ProtectedRoute } from './auth/AuthContext';
 import LoginPage from './pages/LoginPage';
 import ProjectDetail from './pages/ProjectDetail';
 import RepositoryDetail from './pages/RepositoryDetail';
@@ -46,12 +46,11 @@ const App: Component = () => {
               <Route path="/login" component={LoginPage} />
               <Route path="/oauth-callback" component={OAuthCallbackPage} />
               <Route path="/dashboard" component={() => (
-                // <ProtectedRoute>
-                <MainLayout onRefresh={handleRefresh} lastUpdate={lastUpdate}>
-                  <Dashboard />
-
-                </MainLayout>
-                // </ProtectedRoute>
+                <ProtectedRoute>
+                  <MainLayout onRefresh={handleRefresh} lastUpdate={lastUpdate}>
+                    <Dashboard />
+                  </MainLayout>
+                </ProtectedRoute>
               )} />
               <Route path="/member/:login" component={() => (
                 // <ProtectedRoute>

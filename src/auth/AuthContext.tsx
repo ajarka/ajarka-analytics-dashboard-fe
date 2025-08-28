@@ -1,100 +1,91 @@
 import { createContext, ParentComponent, createSignal, createEffect, useContext, Component } from 'solid-js';
-import axios from 'axios';
+import { useNavigate } from '@solidjs/router';
+import { authService, LoginCredentials, User } from '../services/auth';
 
 interface AuthContextType {
     isAuthenticated: boolean;
-    login: (token: string) => Promise<boolean>;
+    user: User | null;
+    login: (credentials: LoginCredentials) => Promise<boolean>;
+    loginWithGitHub: (code: string) => Promise<boolean>;
     logout: () => void;
-    token: string | null;
+    githubToken: string | null;
 }
 
 const initialAuthContext: AuthContextType = {
     isAuthenticated: false,
+    user: null,
     login: async () => false,
+    loginWithGitHub: async () => false,
     logout: () => {},
-    token: null
+    githubToken: null
 };
 
 export const AuthContext = createContext<AuthContextType>(initialAuthContext);
 
 export const AuthProvider: ParentComponent = (props) => {
     const [isAuthenticated, setIsAuthenticated] = createSignal(false);
-    const [token, setToken] = createSignal<string | null>(null);
+    const [user, setUser] = createSignal<User | null>(null);
     const [authChecked, setAuthChecked] = createSignal(false);
 
-    const validateToken = async (githubToken: string) => {
+    const login = async (credentials: LoginCredentials) => {
         try {
-            (window as any).DebugLogger.log('Validating token:', githubToken); // Debug log
-            const response = await axios.get('https://api.github.com/user', {
-                headers: {
-                    'Authorization': `Bearer ${githubToken}`
-                }
-            });
-
-            return response.status === 200;
-        } catch (error) {
-            (window as any).DebugLogger.error('Token validation failed:', error);
-            return false;
-        }
-    };
-
-    const login = async (githubToken: string) => {
-        try {
-            const cleanToken = githubToken.trim().replace(/^GITHUB_TOKEN/, '');
+            const response = await authService.login(credentials);
             
-            const isValid = await validateToken(cleanToken);
-            
-            if (isValid) {
-                (window as any).DebugLogger.log('Token is valid'); // Debug log
-                
-                // Ensure clean storage
-                localStorage.removeItem('GITHUB_TOKEN');
-                localStorage.setItem('GITHUB_TOKEN', cleanToken);
-                
-                setToken(cleanToken);
+            if (response.success && response.user && response.token) {
+                setUser(response.user);
                 setIsAuthenticated(true);
+                authService.storeToken(response.token);
                 return true;
             } else {
-                (window as any).DebugLogger.log('Token is invalid'); // Debug log
-                localStorage.removeItem('GITHUB_TOKEN');
-                setToken(null);
-                setIsAuthenticated(false);
                 return false;
             }
         } catch (error) {
-            (window as any).DebugLogger.error('Login error:', error);
-            localStorage.removeItem('GITHUB_TOKEN');
-            setToken(null);
-            setIsAuthenticated(false);
+            console.error('Login error:', error);
             return false;
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem('GITHUB_TOKEN');
+    const loginWithGitHub = async (code: string) => {
+        try {
+            const response = await authService.loginWithGitHub(code);
+            
+            if (response.success && response.user && response.token) {
+                setUser(response.user);
+                setIsAuthenticated(true);
+                authService.storeToken(response.token);
+                return true;
+            } else {
+                return false;
+            }
+        } catch (error) {
+            console.error('GitHub login error:', error);
+            return false;
+        }
+    };
+
+    const logout = async () => {
+        const token = authService.getStoredToken();
+        if (token) {
+            await authService.logout(token);
+        }
+        authService.removeToken();
         setIsAuthenticated(false);
-        setToken(null);
+        setUser(null);
     };
 
     createEffect(() => {
-        const checkStoredToken = async () => {
-            let storedToken = localStorage.getItem('GITHUB_TOKEN');
+        const checkStoredSession = async () => {
+            const token = authService.getStoredToken();
             
-            // Clean the token if it has unexpected prefixes
-            if (storedToken) {
-                storedToken = storedToken.trim().replace(/^GITHUB_TOKEN/, '');
+            if (token) {
+                const sessionUser = await authService.validateSession(token);
                 
-                (window as any).DebugLogger.log('Checking stored token:', storedToken); // Debug log
-                
-                const isValid = await validateToken(storedToken);
-                
-                if (isValid) {
-                    localStorage.setItem('GITHUB_TOKEN', storedToken);
-                    setToken(storedToken);
+                if (sessionUser) {
+                    setUser(sessionUser);
                     setIsAuthenticated(true);
                 } else {
-                    localStorage.removeItem('GITHUB_TOKEN');
-                    setToken(null);
+                    authService.removeToken();
+                    setUser(null);
                     setIsAuthenticated(false);
                 }
             }
@@ -102,14 +93,16 @@ export const AuthProvider: ParentComponent = (props) => {
             setAuthChecked(true);
         };
 
-        checkStoredToken();
+        checkStoredSession();
     });
 
     const authContextValue = {
         isAuthenticated: isAuthenticated(),
+        user: user(),
         login,
+        loginWithGitHub,
         logout,
-        token: token()
+        githubToken: user()?.githubToken || null
     };
 
     return (
@@ -148,21 +141,19 @@ export const OAuthCallbackPage: Component = () => {
 
         if (code) {
             try {
-                // Note: You'll need to implement this backend endpoint
-                const response = await axios.post('/api/github/oauth', { code });
-                const { access_token } = response.data;
-
-                const loginSuccess = await auth.login(access_token);
+                const loginSuccess = await auth.loginWithGitHub(code);
                 
                 if (loginSuccess) {
-                    window.location.href = '/';
+                    window.location.href = '/dashboard';
                 } else {
                     window.location.href = '/login';
                 }
             } catch (error) {
-                (window as any).DebugLogger.error('OAuth callback error:', error);
+                console.error('OAuth callback error:', error);
                 window.location.href = '/login';
             }
+        } else {
+            window.location.href = '/login';
         }
     });
 
