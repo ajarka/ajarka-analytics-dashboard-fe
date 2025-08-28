@@ -8,6 +8,8 @@ import { ProgressListView } from '../components/Progress/ProgressListView';
 import { useGithubData } from '../hooks/useGithubData';
 import { useRateLimit } from '../context/RateLimitContext';
 import { Motion } from "@motionone/solid";
+import { testTokenSource } from '../utils/auth-test';
+import '../utils/debug-auth-state';
 
 import {
     FaSolidUsers,
@@ -132,6 +134,12 @@ export const Dashboard: Component = () => {
     } = useGithubData();
 
     const { isRateLimited, rateLimitData, checkAndUpdateRateLimit } = useRateLimit();
+    
+    // Test token source on dashboard load
+    onMount(() => {
+        console.log('🔍 Dashboard loaded - Testing token source...');
+        testTokenSource();
+    });
     const [viewMode, setViewMode] = createSignal<'card' | 'list'>('card');
 
     // Helper function to get filtered projects (same logic as ProjectProgress)

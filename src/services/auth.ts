@@ -29,7 +29,7 @@ export interface AuthSession {
 }
 
 class AuthService {
-  private baseUrl = 'http://localhost:3003';
+  private baseUrl = 'http://localhost:3007';
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
@@ -74,16 +74,22 @@ class AuthService {
 
   async loginWithGitHub(code: string): Promise<LoginResponse> {
     try {
+      console.log('🔍 GitHub OAuth Login - Starting...');
       const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
       const clientSecret = import.meta.env.VITE_GITHUB_CLIENT_SECRET;
+      
+      console.log('- Client ID:', clientId);
+      console.log('- Client Secret:', clientSecret ? 'Present' : 'Missing');
 
       if (!clientId || !clientSecret) {
+        console.log('❌ OAuth not configured');
         return {
           success: false,
           message: 'GitHub OAuth not configured'
         };
       }
 
+      console.log('🔄 Exchanging code for access token...');
       const tokenResponse = await axios.post(
         'https://github.com/login/oauth/access_token',
         {
@@ -98,14 +104,19 @@ class AuthService {
         }
       );
 
+      console.log('🔄 Token exchange response:', tokenResponse.data);
       const accessToken = tokenResponse.data.access_token;
       
       if (!accessToken) {
+        console.log('❌ No access token received');
+        console.log('- Token response data:', tokenResponse.data);
         return {
           success: false,
           message: 'Failed to get access token from GitHub'
         };
       }
+      
+      console.log('✅ Access token received:', accessToken.substring(0, 20) + '...');
 
       const userResponse = await axios.get('https://api.github.com/user', {
         headers: {
@@ -213,15 +224,26 @@ class AuthService {
   }
 
   getStoredToken(): string | null {
-    return localStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
+    console.log('🔍 Getting stored token:', token);
+    return token;
   }
 
   storeToken(token: string): void {
+    console.log('💾 Storing auth token:', token);
     localStorage.setItem('auth_token', token);
+    console.log('✅ Token stored, verification:', localStorage.getItem('auth_token'));
+  }
+
+  storeUser(user: User): void {
+    console.log('💾 Storing user data:', user);
+    localStorage.setItem('auth_user', JSON.stringify(user));
+    console.log('✅ User stored, verification:', localStorage.getItem('auth_user'));
   }
 
   removeToken(): void {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
   }
 }
 

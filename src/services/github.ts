@@ -3,13 +3,42 @@ import axios from 'axios';
 import { Cache } from '../utils/cache';
 
 const getGithubToken = () => {
-    // Check environment variable first
+    console.log('🔍 Checking token sources...');
+    
+    // First priority: OAuth token from authenticated user session
+    const authToken = localStorage.getItem('auth_token');
+    console.log('- Auth Token:', authToken ? 'Present' : 'Missing');
+    
+    if (authToken) {
+        // Get user data from auth service to retrieve GitHub token
+        const userData = JSON.parse(localStorage.getItem('auth_user') || '{}');
+        console.log('- User Data:', userData);
+        console.log('- User has GitHub token:', userData.githubToken ? 'Yes' : 'No');
+        
+        if (userData.githubToken) {
+            console.log('🔑 ✅ Using OAuth GitHub token from authenticated user');
+            console.log('- OAuth Token (first 20 chars):', userData.githubToken.substring(0, 20) + '...');
+            return userData.githubToken;
+        }
+    }
+    
+    // Fallback: Environment variable for development
     const envToken = import.meta.env.VITE_GITHUB_TOKEN;
     if (envToken) {
+        console.log('🔑 ⚠️ Using fallback .env GitHub token (development mode)');
+        console.log('- .env Token (first 20 chars):', envToken.substring(0, 20) + '...');
         return envToken;
     }
-    // Fallback to localStorage
-    return localStorage.getItem('GITHUB_TOKEN') || '';
+    
+    // Last resort: localStorage legacy token
+    const legacyToken = localStorage.getItem('GITHUB_TOKEN');
+    if (legacyToken) {
+        console.log('🔑 ⚠️ Using legacy localStorage GitHub token');
+        return legacyToken;
+    }
+    
+    console.warn('⚠️ ❌ No GitHub token available - API calls will fail');
+    return '';
 };
 
 // Initialize REST client
@@ -34,21 +63,66 @@ const initializeGraphQLClient = (token: string) => {
     });
 };
 
-// Get token and initialize both clients
-const GITHUB_TOKEN = getGithubToken();
-const restClient = initializeRestClient(GITHUB_TOKEN);
-const graphqlClient = initializeGraphQLClient(GITHUB_TOKEN);
+// Initialize clients with dynamic token
+const getRestClient = () => {
+    const currentToken = getGithubToken();
+    return initializeRestClient(currentToken);
+};
+
+const getGraphQLClient = () => {
+    const currentToken = getGithubToken();
+    return initializeGraphQLClient(currentToken);
+};
+
+// Legacy clients for backward compatibility (but will be refreshed dynamically)
+let restClient = getRestClient();
+let graphqlClient = getGraphQLClient();
 
 // Add token refresh/update capability
-export const updateGithubToken = (newToken: string) => {
+export const updateGithubToken = (newToken?: string) => {
     const token = newToken || getGithubToken();
-    // Update both clients with new token
-    restClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    graphqlClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    // Update localStorage if using fallback
-    if (!import.meta.env.VITE_GITHUB_TOKEN) {
-        localStorage.setItem('GITHUB_TOKEN', token);
+    console.log('🔄 Updating GitHub API clients with new token:', token.substring(0, 30) + '...');
+    
+    // Re-initialize both clients with new token
+    restClient = initializeRestClient(token);
+    graphqlClient = initializeGraphQLClient(token);
+    
+    return token;
+};
+
+// Function to refresh token from current auth state
+export const refreshGithubToken = () => {
+    const currentToken = getGithubToken();
+    if (currentToken) {
+        updateGithubToken(currentToken);
+        return true;
     }
+    return false;
+};
+
+// Get fresh REST client with current token
+export const getFreshRestClient = () => {
+    const token = getGithubToken();
+    console.log('🔄 Creating fresh REST client with token:', token.substring(0, 30) + '...');
+    return initializeRestClient(token);
+};
+
+// Get fresh GraphQL client with current token  
+export const getFreshGraphQLClient = () => {
+    const token = getGithubToken();
+    console.log('🔄 Creating fresh GraphQL client with token:', token.substring(0, 30) + '...');
+    return initializeGraphQLClient(token);
+};
+
+// Wrapper untuk memastikan semua API calls menggunakan token terbaru
+const makeRestApiCall = async (method: 'get' | 'post' | 'put' | 'delete', url: string, config?: any) => {
+    const client = getFreshRestClient();
+    return client[method](url, config);
+};
+
+const makeGraphQLApiCall = async (query: string, variables?: any) => {
+    const client = getFreshGraphQLClient();
+    return client.post('', { query, variables });
 };
 
 interface RateLimitResponse {
@@ -279,7 +353,7 @@ export const fetchOrgProjects = async () => {
 
 export const fetchOrgRepositories = async () => {
     try {
-        const { data } = await restClient.get('/orgs/Smartelco/repos?per_page=100');
+        const { data } = await makeRestApiCall('get', '/orgs/Smartelco/repos?per_page=100');
         return data;
     } catch (error) {
         (window as any).DebugLogger.error('Error fetching repositories:', error);
@@ -289,7 +363,7 @@ export const fetchOrgRepositories = async () => {
 
 export const fetchRepoIssues = async (repoName: string) => {
     try {
-        const { data: issues } = await restClient.get(`/repos/Smartelco/${repoName}/issues`, {
+        const { data: issues } = await makeRestApiCall('get', `/repos/Smartelco/${repoName}/issues`, {
             params: {
                 state: 'all',
                 per_page: 100
@@ -393,7 +467,7 @@ const findProjectItem = (
 export const fetchRepoPulls = async (repoName: string) => {
     try {
         // Dapatkan semua PR dulu
-        const { data: prs } = await restClient.get(`/repos/Smartelco/${repoName}/pulls`, {
+        const { data: prs } = await makeRestApiCall('get', `/repos/Smartelco/${repoName}/pulls`, {
             params: {
                 state: 'all',
                 per_page: 100
@@ -441,7 +515,7 @@ export const fetchRepoPulls = async (repoName: string) => {
 export const fetchRepoCommits = async (repoName: string) => {
     try {
         // First check if the repository exists and has commits
-        const repoResponse = await restClient.get(`/repos/Smartelco/${repoName}`);
+        const repoResponse = await makeRestApiCall('get', `/repos/Smartelco/${repoName}`);
 
         // If repository is empty, return empty array with repository info
         if (repoResponse.data.size === 0) {
@@ -564,10 +638,13 @@ const fetchPullComments = async (repoName: string, pullNumber: number) => {
 
 export const fetchGithubData = async () => {
     try {
+        // Get fresh client with current token
+        const currentRestClient = getFreshRestClient();
+        
         // Fetch basic data first
         const [membersResponse, reposResponse] = await Promise.all([
-            restClient.get('/orgs/Smartelco/members?per_page=100'),
-            restClient.get('/orgs/Smartelco/repos?per_page=100'),
+            makeRestApiCall('get', '/orgs/Smartelco/members?per_page=100'),
+            makeRestApiCall('get', '/orgs/Smartelco/repos?per_page=100'),
         ]);
 
         const members = membersResponse.data;

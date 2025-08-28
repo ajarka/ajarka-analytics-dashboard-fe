@@ -1,19 +1,27 @@
 {
   "users": [
     {
-      "id": 1,
+      "id": "1",
       "email": "admin@smartelco.com",
       "password": "admin123",
       "name": "Administrator",
       "role": "admin"
     },
     {
-      "id": 2,
+      "id": "2",
       "email": "user@smartelco.com",
       "password": "user123",
       "name": "Regular User",
       "role": "user"
     }
   ],
-  "auth_sessions": []
+  "auth_sessions": [
+    {
+      "id": "sess_1756371190684_a9d5hcoip",
+      "userId": "1",
+      "token": "token_1756371190684_jlerhjpcgwp",
+      "createdAt": "2025-08-28T08:53:10.684Z",
+      "expiresAt": "2025-08-29T08:53:10.684Z"
+    }
+  ]
 }

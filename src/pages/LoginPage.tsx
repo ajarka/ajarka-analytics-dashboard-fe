@@ -86,8 +86,10 @@ export const LoginPage: Component = () => {
             
             if (success) {
                 const redirectTo = (location.state as any)?.redirectTo || '/dashboard';
+                console.log('🚀 Login successful, navigating to:', redirectTo);
                 navigate(redirectTo);
             } else {
+                console.log('❌ Login failed');
                 setError('Invalid email or password');
             }
         } catch (err) {
@@ -99,8 +101,13 @@ export const LoginPage: Component = () => {
 
     const handleGitHubOAuth = () => {
         const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
-        const redirectUri = `${window.location.origin}/login`;
+        const redirectUri = `${window.location.origin}/oauth-callback`;
         const scope = 'repo,read:org,read:user';
+
+        console.log('🚀 Starting GitHub OAuth flow...');
+        console.log('- Client ID:', clientId);
+        console.log('- Redirect URI:', redirectUri);
+        console.log('- Current Origin:', window.location.origin);
 
         if (!clientId) {
             setError('GitHub OAuth is not configured. Please use email login or contact administrator.');
@@ -108,6 +115,10 @@ export const LoginPage: Component = () => {
         }
 
         const githubOAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=oauth`;
+        
+        console.log('🔗 OAuth URL:', githubOAuthUrl);
+        console.log('⚠️ Make sure GitHub OAuth App callback URL matches:', redirectUri);
+        
         window.location.href = githubOAuthUrl;
     };
 
@@ -243,16 +254,16 @@ export const LoginPage: Component = () => {
                                         </Box>
                                     )}
 
-                                    {/* Demo Credentials Info */}
-                                    <Box class="w-full bg-blue-500/20 border border-blue-400/30 rounded-lg p-4 backdrop-blur-sm">
-                                        <Text class="text-blue-200 text-xs font-medium mb-2">
-                                            Demo Credentials:
+                                    {/* Staging Mode Info */}
+                                    <Box class="w-full bg-green-500/20 border border-green-400/30 rounded-lg p-4 backdrop-blur-sm">
+                                        <Text class="text-green-200 text-xs font-medium mb-2">
+                                            🚀 Staging Mode - Login Bypassed:
                                         </Text>
-                                        <Text class="text-blue-100 text-xs block mb-1">
-                                            admin@smartelco.com / admin123
+                                        <Text class="text-green-100 text-xs block mb-1">
+                                            Any email/password will work!
                                         </Text>
-                                        <Text class="text-blue-100 text-xs">
-                                            user@smartelco.com / user123
+                                        <Text class="text-green-100 text-xs">
+                                            Try: admin@smartelco.com / any_password
                                         </Text>
                                     </Box>
 
