@@ -1,5 +1,4 @@
 import { createContext, ParentComponent, createSignal, createEffect, useContext, Component, onMount, Show } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
 import { authService, LoginCredentials, User } from '../services/auth';
 import { refreshGithubToken } from '../services/github';
 
@@ -235,10 +234,7 @@ export const ProtectedRoute: ParentComponent = (props) => {
                     </div>
                 }
             >
-                {() => {
-                    console.log('✅ Rendering protected content - user authenticated');
-                    return <>{props.children}</>;
-                }}
+                {props.children}
             </Show>
         </Show>
     );

@@ -120,10 +120,6 @@ const makeRestApiCall = async (method: 'get' | 'post' | 'put' | 'delete', url: s
     return client[method](url, config);
 };
 
-const makeGraphQLApiCall = async (query: string, variables?: any) => {
-    const client = getFreshGraphQLClient();
-    return client.post('', { query, variables });
-};
 
 interface RateLimitResponse {
     rateLimit: {
@@ -638,9 +634,6 @@ const fetchPullComments = async (repoName: string, pullNumber: number) => {
 
 export const fetchGithubData = async () => {
     try {
-        // Get fresh client with current token
-        const currentRestClient = getFreshRestClient();
-        
         // Fetch basic data first
         const [membersResponse, reposResponse] = await Promise.all([
             makeRestApiCall('get', '/orgs/Smartelco/members?per_page=100'),

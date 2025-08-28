@@ -27,7 +27,7 @@ export const LoginPage: Component = () => {
     const navigate = useNavigate();
     const location = useLocation();
     
-    const [activeMethod, setActiveMethod] = createSignal(0);
+    const [activeMethod] = createSignal(0);
     const [email, setEmail] = createSignal('');
     const [password, setPassword] = createSignal('');
     const [error, setError] = createSignal('');
@@ -238,7 +238,7 @@ export const LoginPage: Component = () => {
                                             onInput={(e: { currentTarget: { value: any; }; }) => setPassword(e.currentTarget.value)}
                                             w="$full"
                                             class="bg-white/10 border-white/20 text-white placeholder-white/60 backdrop-blur-sm"
-                                            onKeyDown={(e) => {
+                                            onKeyDown={(e: KeyboardEvent) => {
                                                 if (e.key === 'Enter') {
                                                     handleEmailLogin();
                                                 }

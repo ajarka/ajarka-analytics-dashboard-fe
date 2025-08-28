@@ -21,7 +21,10 @@
       "Bash(npx json-server:*)",
       "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
       "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
-      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)"
+      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": []
