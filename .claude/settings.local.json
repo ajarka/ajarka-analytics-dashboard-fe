@@ -24,7 +24,9 @@
       "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
       "Bash(npx tsc:*)",
       "Bash(npm run lint)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
