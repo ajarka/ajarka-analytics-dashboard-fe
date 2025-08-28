@@ -18,6 +18,7 @@ interface ProjectProgressProps {
 export const ProjectProgress: Component<ProjectProgressProps> = (props) => {
     const [memberFilter, setMemberFilter] = createSignal<string[]>([]);
     const [repoFilter, setRepoFilter] = createSignal<string[]>([]);
+    const [projectStateFilter, setProjectStateFilter] = createSignal<string[]>(['open']); // Default to open projects
     const [sortBy, setSortBy] = createSignal('progress');
     const [searchQuery, setSearchQuery] = createSignal('');
     const { isRateLimited, rateLimitData } = useRateLimit();
@@ -70,6 +71,12 @@ export const ProjectProgress: Component<ProjectProgressProps> = (props) => {
         return project.issues.some(issue => repoList.includes(issue.repository));
     };
 
+    const getProjectState = (project: GithubProject, allIssues: GithubIssue[]): 'open' | 'closed' => {
+        const projectIssues = getProjectIssues(project, allIssues);
+        const hasOpenIssues = projectIssues.some(issue => issue.state === 'open');
+        return hasOpenIssues ? 'open' : 'closed';
+    };
+
     const compareByProgress = (a: GithubProject, b: GithubProject, allIssues: GithubIssue[]) => {
         const progressA = calculateProgressStats(getProjectIssues(a, allIssues));
         const progressB = calculateProgressStats(getProjectIssues(b, allIssues));
@@ -95,6 +102,14 @@ export const ProjectProgress: Component<ProjectProgressProps> = (props) => {
         // Apply repository filter
         if (repoFilter().length > 0) {
             filtered = filtered.filter(project => hasMatchingRepository(project, repoFilter()));
+        }
+
+        // Apply project state filter
+        if (projectStateFilter().length > 0) {
+            filtered = filtered.filter(project => {
+                const state = getProjectState(project, props.issues);
+                return projectStateFilter().includes(state);
+            });
         }
 
         // Apply sorting
@@ -187,10 +202,20 @@ export const ProjectProgress: Component<ProjectProgressProps> = (props) => {
         }, 0);
     };
 
+
     return (
         <>
             <FilterSort
                 filters={[
+                    {
+                        name: 'Project Status',
+                        options: [
+                            { label: 'Open Projects', value: 'open' },
+                            { label: 'Closed Projects', value: 'closed' }
+                        ],
+                        selectedValues: projectStateFilter(),
+                        onFilterChange: setProjectStateFilter
+                    },
                     {
                         name: 'Members',
                         options: filterOptions.members.map(member => ({

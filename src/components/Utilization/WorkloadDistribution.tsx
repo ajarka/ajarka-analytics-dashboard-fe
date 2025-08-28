@@ -77,6 +77,8 @@ export const WorkloadDistribution: Component<WorkloadDistributionProps> = (props
             tasks: member.details.tasks.total,
             activeIssues: member.activeIssues,
             activePRs: member.activePRs,
+            totalCommits: member.totalCommits || 0,
+            avatar: member.member.avatar_url || `https://github.com/${member.member.login}.png`,
             category: getWorkloadCategory(member.utilizationPercentage),
             color: getWorkloadColor(member.utilizationPercentage),
             details: member.details
@@ -148,7 +150,7 @@ export const WorkloadDistribution: Component<WorkloadDistributionProps> = (props
                 wheelX: "none",
                 wheelY: "none",
                 layout: root.horizontalLayout,
-                paddingLeft: 0,
+                paddingLeft: 120,  // Increase left padding for Y-axis labels
                 paddingRight: 20,
                 paddingTop: 20,  // Add top padding for tooltip visibility
                 paddingBottom: 0
@@ -160,19 +162,24 @@ export const WorkloadDistribution: Component<WorkloadDistributionProps> = (props
             am5xy.CategoryAxis.new(root, {
                 categoryField: "name",
                 renderer: am5xy.AxisRendererY.new(root, {
-                    minGridDistance: 30,
-                    inversed: true
+                    minGridDistance: 35,  // Increase spacing between labels
+                    inversed: true,
+                    cellStartLocation: 0.1,
+                    cellEndLocation: 0.9
                 }),
                 tooltip: am5.Tooltip.new(root, {})
             })
         );
     
-        // Style Y axis labels
+        // Style Y axis labels - Remove truncation to show full names
         yAxis.get("renderer").labels.template.setAll({
-            fontSize: 12,
-            fill: am5.color("#4B5563"),
-            maxWidth: 150,
-            oversizedBehavior: "truncate"
+            fontSize: 11,
+            fill: am5.color("#374151"),
+            fontWeight: "500",
+            textAlign: "right",
+            paddingRight: 8,
+            // Remove maxWidth and oversizedBehavior to show full names
+            oversizedBehavior: "none"
         });
     
         // Create X axis
@@ -199,7 +206,7 @@ export const WorkloadDistribution: Component<WorkloadDistributionProps> = (props
                     pointerOrientation: "left",
                     getFillFromSprite: false,
                     autoTextColor: false,
-                    labelText: "[#ffffff]{name}[/]\n[#ffffff]Utilization: {utilization}%[/]\n[#ffffff]Tasks: {tasks}[/]\n[#ffffff]Active Issues: {activeIssues}[/]\n[#ffffff]Pending PRs: {activePRs}[/]",
+                    labelText: "[#ffffff]{name}[/]\n[#ffffff]Utilization: {utilization}%[/]\n[#ffffff]Tasks: {tasks}[/]\n[#ffffff]Active Issues: {activeIssues}[/]\n[#ffffff]Pending PRs: {activePRs}[/]\n[#ffffff]Total Commits: {totalCommits}[/]",
                     background: am5.RoundedRectangle.new(root, {
                         fill: am5.color("#1F2937")
                     }),
@@ -241,7 +248,7 @@ export const WorkloadDistribution: Component<WorkloadDistributionProps> = (props
     
         // Style columns
         series.columns.template.setAll({
-            height: am5.percent(70),
+            height: am5.percent(60),  // Reduce bar height for better spacing
             strokeWidth: 0,
             cornerRadiusTR: 4,
             cornerRadiusBR: 4,
@@ -506,11 +513,11 @@ export const WorkloadDistribution: Component<WorkloadDistributionProps> = (props
                                             <SelectContent>
                                                 <SelectListbox>
                                                     <SelectOption value="bar">
-                                                        <SelectOptionText>Bar Chart</SelectOptionText>
+                                                        <SelectOptionText>Modern Cards View</SelectOptionText>
                                                         <SelectOptionIndicator />
                                                     </SelectOption>
                                                     <SelectOption value="pie">
-                                                        <SelectOptionText>Distribution Pie</SelectOptionText>
+                                                        <SelectOptionText>Distribution Chart</SelectOptionText>
                                                         <SelectOptionIndicator />
                                                     </SelectOption>
                                                 </SelectListbox>
@@ -619,25 +626,120 @@ export const WorkloadDistribution: Component<WorkloadDistributionProps> = (props
                                 </HStack>
                             )}
 
-                            {/* Charts */}
-                            <Box class="w-full h-[600px] relative">
+                            {/* Professional Workload Cards */}
+                            <Box class="w-full">
                                 {viewType() === 'bar' ? (
-                                    <div
-                                        ref={barChartDiv}
-                                        class="w-full h-full"
-                                    />
+                                    <div class="space-y-4">
+                                        {/* Modern Card Layout */}
+                                        <div class="grid gap-4">
+                                            <For each={filteredAndSortedData()}>
+                                                {(member) => (
+                                                    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02]">
+                                                        <div class="flex items-center justify-between">
+                                                            {/* Left: Member Info */}
+                                                            <div class="flex items-center space-x-4">
+                                                                <div class="relative">
+                                                                    <img
+                                                                        src={member.avatar}
+                                                                        alt={member.name}
+                                                                        class="w-12 h-12 rounded-full border-2 border-gray-200 dark:border-gray-600 object-cover"
+                                                                        onError={(e) => {
+                                                                            // Fallback to initial if image fails to load
+                                                                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                                                            const fallback = e.currentTarget.nextElementSibling as HTMLDivElement;
+                                                                            if (fallback) fallback.style.display = 'flex';
+                                                                        }}
+                                                                    />
+                                                                    <div class="hidden w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold text-lg items-center justify-center">
+                                                                        {member.name.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white" style={{'font-family': 'Figtree'}}>
+                                                                        {member.name}
+                                                                    </h3>
+                                                                    <p class="text-sm text-gray-600 dark:text-gray-400" style={{'font-family': 'Figtree'}}>
+                                                                        Team Member
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Center: Progress Bar & Stats */}
+                                                            <div class="flex-1 mx-8 max-w-md">
+                                                                <div class="flex items-center justify-between mb-2">
+                                                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300" style={{'font-family': 'Figtree'}}>
+                                                                        Workload
+                                                                    </span>
+                                                                    <span class={`text-sm font-bold ${
+                                                                        member.utilization >= 90 ? 'text-red-600' :
+                                                                        member.utilization >= 75 ? 'text-yellow-600' :
+                                                                        member.utilization >= 50 ? 'text-green-600' : 'text-blue-600'
+                                                                    }`} style={{'font-family': 'Figtree'}}>
+                                                                        {member.utilization}%
+                                                                    </span>
+                                                                </div>
+                                                                
+                                                                {/* Progress Bar */}
+                                                                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                                                                    <div 
+                                                                        class={`h-full rounded-full transition-all duration-300 ${
+                                                                            member.utilization >= 90 ? 'bg-gradient-to-r from-red-500 to-red-600' :
+                                                                            member.utilization >= 75 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
+                                                                            member.utilization >= 50 ? 'bg-gradient-to-r from-green-500 to-green-600' : 
+                                                                            'bg-gradient-to-r from-blue-500 to-blue-600'
+                                                                        }`}
+                                                                        style={`width: ${Math.min(member.utilization, 100)}%`}
+                                                                    />
+                                                                </div>
+
+                                                                {/* Quick Stats */}
+                                                                <div class="grid grid-cols-4 gap-2 mt-3 text-xs text-gray-600 dark:text-gray-400" style={{'font-family': 'Figtree'}}>
+                                                                    <span>{member.tasks} tasks</span>
+                                                                    <span>{member.activeIssues} issues</span>
+                                                                    <span>{member.activePRs} PRs</span>
+                                                                    <span>{member.totalCommits} commits</span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Right: Status Badge */}
+                                                            <div class="text-right">
+                                                                <div class={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                                                    member.utilization >= 90 
+                                                                        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                                                                    member.utilization >= 75 
+                                                                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                                                    member.utilization >= 50 
+                                                                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 
+                                                                        'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                                                }`} style={{'font-family': 'Figtree'}}>
+                                                                    {member.utilization >= 90 ? '🔴 Critical' :
+                                                                     member.utilization >= 75 ? '🟡 High Load' :
+                                                                     member.utilization >= 50 ? '🟢 Optimal' : '🔵 Available'}
+                                                                </div>
+                                                                
+                                                                {/* Detailed Stats */}
+                                                                <div class="mt-2 text-xs text-gray-500 dark:text-gray-500" style={{'font-family': 'Figtree'}}>
+                                                                    Est. {Math.round(member.utilization * 0.4)}h/week
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </For>
+                                        </div>
+                                    </div>
                                 ) : (
                                     <div
                                         ref={pieChartDiv}
-                                        class="w-full h-full"
+                                        class="w-full h-[400px]"
                                     />
                                 )}
 
                                 {filteredAndSortedData().length === 0 && (
                                     <Box
-                                        class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90"
+                                        class="flex items-center justify-center p-12 bg-gray-50 dark:bg-gray-800 rounded-xl"
                                     >
-                                        <Text size="lg" color="$neutral11">
+                                        <Text size="lg" color="$neutral11" style={{'font-family': 'Figtree'}}>
                                             No data matches the current filters
                                         </Text>
                                     </Box>

@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm audit:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(npm run build:*)",
+      "Read(C:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(C:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(C:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(C:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(C:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)",
+      "Read(c:\\Users\\aditi\\OneDrive\\Gambar\\Screenshot/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

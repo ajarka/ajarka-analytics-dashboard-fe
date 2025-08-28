@@ -1,8 +1,7 @@
 import { Component, createMemo, createSignal } from 'solid-js';
 import { useGithubData } from '../hooks/useGithubData';
-import { MemberLoadAnalysis } from '../components/Utilization/MemberLoadAnalysis';
 import { CapacityPlanning } from '../components/Utilization/CapacityPlanning';
-import { WorkloadDistribution } from '../components/Utilization/WorkloadDistribution';
+import { CompactWorkloadChart } from '../components/Utilization/CompactWorkloadChart';
 import { Card } from '../components/UI/Card';
 import { Button, HStack, VStack, Text, Box } from '@hope-ui/solid';
 import { useRateLimit } from '../context/RateLimitContext';
@@ -705,12 +704,7 @@ export const ResourceUtilization: Component = () => {
                         </div>
                         
                         <div class="space-y-4 md:space-y-6">
-                            <WorkloadDistribution utilization={memberUtilization()} />
-                            <MemberLoadAnalysis
-                                projects={data()?.projects || []}
-                                utilization={memberUtilization()}
-                                thresholds={WORKLOAD_THRESHOLDS}
-                            />
+                            <CompactWorkloadChart utilization={memberUtilization()} />
                             <CapacityPlanning
                                 utilization={memberUtilization()}
                                 thresholds={WORKLOAD_THRESHOLDS}

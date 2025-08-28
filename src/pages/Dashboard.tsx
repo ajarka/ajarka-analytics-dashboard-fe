@@ -1,8 +1,10 @@
-import { Component, createEffect, For, onMount } from 'solid-js';
+import { Component, createEffect, For, onMount, createSignal } from 'solid-js';
 import { ProjectProgress } from '../components/Progress/ProjectProgress';
 import { RepositoryProgress } from '../components/Progress/RepositoryProgress';
 import { MemberProgress } from '../components/Progress/MemberProgress'; 
-import { ActivityTimeline } from '../components/Dashboard/ActivityTimeline'; 
+import { ActivityTimeline } from '../components/Dashboard/ActivityTimeline';
+import { ProgressListView } from '../components/Progress/ProgressListView';
+ 
 import { useGithubData } from '../hooks/useGithubData';
 import { useRateLimit } from '../context/RateLimitContext';
 import { Motion } from "@motionone/solid";
@@ -15,7 +17,9 @@ import {
     FaSolidCodePullRequest,
     FaSolidCodeCommit,
     FaSolidFolder,
-    FaSolidCodeBranch
+    FaSolidCodeBranch,
+    FaSolidTableCells,
+    FaSolidBars
 } from 'solid-icons/fa';
 import type { ViewType } from '../types/github';
 
@@ -128,6 +132,22 @@ export const Dashboard: Component = () => {
     } = useGithubData();
 
     const { isRateLimited, rateLimitData, checkAndUpdateRateLimit } = useRateLimit();
+    const [viewMode, setViewMode] = createSignal<'card' | 'list'>('card');
+
+    // Helper function to get filtered projects (same logic as ProjectProgress)
+    const getFilteredProjects = (projects: any[], issues: any[]) => {
+        // For now, we'll just filter for Open projects as default
+        return projects.filter(project => {
+            const projectIssues = issues.filter(issue =>
+                project.issues.some((pi: any) => 
+                    pi.number === issue.number && 
+                    pi.repository === issue.repository.name
+                )
+            );
+            const hasOpenIssues = projectIssues.some(issue => issue.state === 'open');
+            return hasOpenIssues; // Default: show only Open projects
+        });
+    };
 
     // Debug logs
     createEffect(() => {
@@ -369,6 +389,34 @@ export const Dashboard: Component = () => {
                         </button>
                     ))}
                 </div>
+                
+                {/* View Mode Toggle */}
+                <div class="flex border-l border-gray-200 dark:border-gray-700 pl-4 ml-4">
+                    <button
+                        onClick={() => setViewMode('card')}
+                        class={`
+                            px-3 py-2 rounded-l-lg text-sm font-medium transition-all duration-200
+                            ${viewMode() === 'card' ? 
+                                'bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-300' : 
+                                'text-gray-600 dark:text-gray-400 hover:text-blue-900 dark:hover:text-blue-300 hover:bg-blue-50/30 dark:hover:bg-blue-900/10'}
+                        `}
+                        title="Card View"
+                    >
+                        <FaSolidTableCells class="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('list')}
+                        class={`
+                            px-3 py-2 rounded-r-lg text-sm font-medium transition-all duration-200
+                            ${viewMode() === 'list' ? 
+                                'bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-300' : 
+                                'text-gray-600 dark:text-gray-400 hover:text-blue-900 dark:hover:text-blue-300 hover:bg-blue-50/30 dark:hover:bg-blue-900/10'}
+                        `}
+                        title="List View"
+                    >
+                        <FaSolidBars class="w-4 h-4" />
+                    </button>
+                </div>
             </div>
         );
     };
@@ -389,16 +437,26 @@ export const Dashboard: Component = () => {
                             p-4 lg:p-6
                             h-full
                         " style={{'font-family': 'Figtree'}}>
-                            <h2 class="text-xl font-bold  text-blue-900 dark:text-blue-300" style={{'font-family': 'Figtree'}}>
+                            <h2 class="text-xl font-bold text-blue-900 dark:text-blue-300 mb-4" style={{'font-family': 'Figtree'}}>
                                 Repositories Progress
                             </h2>
-                            <RepositoryProgress
-                                repositories={currentData.repositories}
-                                issues={currentData.issues}
-                                pullRequests={currentData.pullRequests}
-                                commits={currentData.commits}
-                                projects={currentData.projects}
-                            />
+                            {viewMode() === 'card' ? (
+                                <RepositoryProgress
+                                    repositories={currentData.repositories}
+                                    issues={currentData.issues}
+                                    pullRequests={currentData.pullRequests}
+                                    commits={currentData.commits}
+                                    projects={currentData.projects}
+                                />
+                            ) : (
+                                <ProgressListView
+                                    viewType="repositories"
+                                    repositories={currentData.repositories}
+                                    issues={currentData.issues}
+                                    pullRequests={currentData.pullRequests}
+                                    commits={currentData.commits}
+                                />
+                            )}
                         </div>
                     );
 
@@ -412,13 +470,21 @@ export const Dashboard: Component = () => {
                             p-4 lg:p-6
                             h-full
                         " style={{'font-family': 'Figtree'}}>
-                            <h2 class="text-xl font-bold  text-blue-900 dark:text-blue-300" style={{'font-family': 'Figtree'}}>
+                            <h2 class="text-xl font-bold text-blue-900 dark:text-blue-300 mb-4" style={{'font-family': 'Figtree'}}>
                                 Members Progress
                             </h2>
-                            <MemberProgress
-                                members={memberDetailedStats()}
-                                projects={currentData.projects}
-                            />
+                            {viewMode() === 'card' ? (
+                                <MemberProgress
+                                    members={memberDetailedStats()}
+                                    projects={currentData.projects}
+                                />
+                            ) : (
+                                <ProgressListView
+                                    viewType="members"
+                                    memberDetailedStats={memberDetailedStats()}
+                                    projects={currentData.projects}
+                                />
+                            )}
                         </div>
                     );
 
@@ -433,18 +499,27 @@ export const Dashboard: Component = () => {
                             p-4 lg:p-6
                             h-full
                         " >
-                            <h2 class="text-xl font-bold text-blue-900 dark:text-blue-300" style={{'font-family': 'Figtree'}}>
+                            <h2 class="text-xl font-bold text-blue-900 dark:text-blue-300 mb-4" style={{'font-family': 'Figtree'}}>
                                 Projects Progress Overview
                             </h2>
-                            <div>
-                            <ProjectProgress
-                                projects={currentData.projects}
-                                issues={currentData.issues}
-                                pullRequests={currentData.pullRequests}
-                                members={currentData.members}
-                                repositories={currentData.repositories}
-                            />
-                            </div>
+                            {viewMode() === 'card' ? (
+                                <ProjectProgress
+                                    projects={currentData.projects}
+                                    issues={currentData.issues}
+                                    pullRequests={currentData.pullRequests}
+                                    members={currentData.members}
+                                    repositories={currentData.repositories}
+                                />
+                            ) : (
+                                <ProgressListView
+                                    viewType="projects"
+                                    projects={currentData.projects}
+                                    issues={currentData.issues}
+                                    pullRequests={currentData.pullRequests}
+                                    commits={currentData.commits}
+                                    filteredProjects={getFilteredProjects(currentData.projects, currentData.issues)}
+                                />
+                            )}
                         </div>
                     );
             }

@@ -1,5 +1,5 @@
 import { Component, createMemo, For, createSignal, Show } from 'solid-js';
-import { Badge, Box, Text, HStack, VStack, Tooltip, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalCloseButton, Input,  Button } from '@hope-ui/solid';
+import { Badge, Box, Text, HStack, VStack, Tooltip, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalCloseButton, Input, Button } from '@hope-ui/solid';
 import { formatDistance, format, differenceInDays, isValid, parseISO } from 'date-fns';
 import { GithubProject, GithubIssue } from '../../types/github';
 import { FaSolidChevronDown, FaSolidChevronRight, FaSolidCode, FaSolidClock, FaSolidCircle, FaSolidExclamation, FaSolidLink,  FaSolidSort, FaSolidSortUp, FaSolidSortDown } from 'solid-icons/fa';
@@ -60,6 +60,7 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
     
     // New state for search, sort, and pagination
     const [searchTerm, setSearchTerm] = createSignal('');
+    const [projectStateFilter, setProjectStateFilter] = createSignal<'all' | 'open' | 'closed'>('open'); // Default to open projects
     const [sortConfig, setSortConfig] = createSignal<{ key: string; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
     const [currentPage, setCurrentPage] = createSignal(1);
     const itemsPerPage = 10;
@@ -439,10 +440,23 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
         };
     };
 
+    // Helper function to determine project state
+    const getProjectState = (project: GithubProject): 'open' | 'closed' => {
+        const projectIssues = props.issues.filter(issue =>
+            project.issues.some(pi => 
+                pi.number === issue.number && 
+                pi.repository === issue.repository.name
+            )
+        );
+        const hasOpenIssues = projectIssues.some(issue => issue.state === 'open');
+        return hasOpenIssues ? 'open' : 'closed';
+    };
+
     const projectTimelines = createMemo(() => 
         props.projects.map(project => ({
             ...project,
-            timeline: getProjectTimeline(project)
+            timeline: getProjectTimeline(project),
+            state: getProjectState(project)
         }))
     );
 
@@ -456,6 +470,11 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
                 project.name.toLowerCase().includes(term) ||
                 project.body?.toLowerCase().includes(term)
             );
+        }
+        
+        // Apply project state filter
+        if (projectStateFilter() !== 'all') {
+            filtered = filtered.filter(project => project.state === projectStateFilter());
         }
         
         // Apply sorting
@@ -520,23 +539,23 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
         <Box class="w-full space-y-4">
             {/* Search and Filter Controls */}
             <div class="flex items-center justify-between gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                <div class="flex items-center gap-2 flex-1"> 
+                <div class="flex items-center gap-4 flex-1"> 
                     <Input
                         placeholder="Search projects..."
                         value={searchTerm()}
                         onInput={(e: Event) => setSearchTerm((e.target as HTMLInputElement).value)}
                         class="flex-1"
                     />
+                    <select 
+                        value={projectStateFilter()}
+                        onChange={(e: Event) => setProjectStateFilter((e.target as HTMLSelectElement).value as 'all' | 'open' | 'closed')}
+                        class="w-48 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="open">Open Projects</option>
+                        <option value="closed">Closed Projects</option>
+                        <option value="all">All Projects</option>
+                    </select>
                 </div>
-                {/* <Select
-                    value={sortConfig().key}
-                    onChange={(e: Event) => handleSort((e.target as HTMLSelectElement).value)}
-                    class="w-48"
-                >
-                    <option value="name">Sort by Name</option>
-                    <option value="progress">Sort by Progress</option>
-                    <option value="startDate">Sort by Start Date</option>
-                </Select> */}
             </div>
 
             {/* Table */}
