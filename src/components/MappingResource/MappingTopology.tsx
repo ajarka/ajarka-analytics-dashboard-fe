@@ -260,11 +260,11 @@ const MappingTopology: Component<MappingTopologyProps> = (props) => {
         projectRepoMap.set(project.number, {
           project: {
             label: project.name,
-            href: `https://github.com/orgs/Smartelco/projects/${project.number}`,
+            href: `https://github.com/orgs/ajarka/projects/${project.number}`,
           },
           repositories: Array.from(projectRepos).map((repoName) => ({
             label: repoName,
-            href: `https://github.com/Smartelco/${repoName}`,
+            href: `https://github.com/ajarka/${repoName}`,
           })),
         });
       }

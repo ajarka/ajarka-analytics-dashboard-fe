@@ -56,9 +56,9 @@ CMD ["nginx", "-g", "daemon off;"]
 
 # How to build and run
 # - Build project dengan docker file
-# docker build --build-arg GITHUB_TOKEN=your_token_here -t smartelco-dashboard .
-# docker run -d -p 80:80 -e GITHUB_TOKEN=your_token_here smartelco-dashboard
+# docker build --build-arg GITHUB_TOKEN=your_token_here -t ajarka-dashboard .
+# docker run -d -p 80:80 -e GITHUB_TOKEN=your_token_here ajarka-dashboard
 # - Build di local computer:
 # VITE_GITHUB_TOKEN=your_token_here npm run build
-# docker build -t smartelco-dashboard .
-# docker run -d -p 80:80 smartelco-dashboard
+# docker build -t ajarka-dashboard .
+# docker run -d -p 80:80 ajarka-dashboard

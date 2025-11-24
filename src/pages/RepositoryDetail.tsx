@@ -377,7 +377,7 @@ export const RepositoryDetail: Component = () => {
                                                     {pr.merged_at ? 'Merged' : pr.state}
                                                 </Badge>
                                                 <a
-                                                    href={`https://github.com/Smartelco/${repoData()!.name}/pull/${pr.number}`}
+                                                    href={`https://github.com/ajarka/${repoData()!.name}/pull/${pr.number}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     class="text-blue-500 hover:text-blue-700"
@@ -434,7 +434,7 @@ export const RepositoryDetail: Component = () => {
                                                 {getDueDateStatus(issue).label}
                                             </Badge>
                                             <a
-                                                href={`https://github.com/Smartelco/${issue.repository.name}/issues/${issue.number}`}
+                                                href={`https://github.com/ajarka/${issue.repository.name}/issues/${issue.number}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 class="text-blue-500 hover:text-blue-700"

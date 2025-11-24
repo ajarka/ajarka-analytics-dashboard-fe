@@ -216,7 +216,7 @@ export const LoginPage: Component = () => {
                                     <Box class="w-full text-center text-white">
                                         <Text size="xl" fontWeight="bold" class="mb-2">Email Authentication</Text>
                                         <Text class="text-white/80 text-sm mb-6">
-                                            Sign in with your Smartelco credentials
+                                            Sign in with your ajarka credentials
                                         </Text>
                                     </Box>
 
@@ -224,7 +224,7 @@ export const LoginPage: Component = () => {
                                     <VStack spacing="$4" class="w-full">
                                         <Input 
                                             type="email"
-                                            placeholder="admin@smartelco.com"
+                                            placeholder="admin@ajarka.com"
                                             value={email()}
                                             onInput={(e: { currentTarget: { value: any; }; }) => setEmail(e.currentTarget.value)}
                                             w="$full"
@@ -263,7 +263,7 @@ export const LoginPage: Component = () => {
                                             Any email/password will work!
                                         </Text>
                                         <Text class="text-green-100 text-xs">
-                                            Try: admin@smartelco.com / any_password
+                                            Try: admin@ajarka.com / any_password
                                         </Text>
                                     </Box>
 

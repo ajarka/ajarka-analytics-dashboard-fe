@@ -1,4 +1,4 @@
-# Smartelco Dashboard
+# ajarka Dashboard
 
 GitHub team analytics and progress tracking dashboard built with SolidJS.
 
@@ -33,43 +33,43 @@ The app will be available at [http://localhost:3000](http://localhost:3000)
 
 We use semantic versioning (MAJOR.MINOR.PATCH) with the following format:
 ```
-smartelco/dashboard:<version>[-<variant>]
+ajarka/dashboard:<version>[-<variant>]
 ```
 
 Examples:
-- `smartelco/dashboard:1.0.0` - Release version
-- `smartelco/dashboard:1.0.0-alpine` - Alpine variant
-- `smartelco/dashboard:latest` - Latest stable version
+- `ajarka/dashboard:1.0.0` - Release version
+- `ajarka/dashboard:1.0.0-alpine` - Alpine variant
+- `ajarka/dashboard:latest` - Latest stable version
 
 1. Build with version tag:
 ```bash
-docker build --build-arg GITHUB_TOKEN=your_token_here -t smartelco/dashboard:1.0.0 .
+docker build --build-arg GITHUB_TOKEN=your_token_here -t ajarka/dashboard:1.0.0 .
 ```
 
 2. Tag also as latest:
 ```bash
-docker tag smartelco/dashboard:1.0.0 smartelco/dashboard:latest
+docker tag ajarka/dashboard:1.0.0 ajarka/dashboard:latest
 ```
 
 3. Push to DockerHub:
 ```bash
 # Push specific version
-docker push smartelco/dashboard:1.0.0
+docker push ajarka/dashboard:1.0.0
 
 # Push latest tag
-docker push smartelco/dashboard:latest
+docker push ajarka/dashboard:latest
 ```
 
 ### Running Container
 
 1. Pull from DockerHub:
 ```bash
-docker pull smartelco/dashboard:latest
+docker pull ajarka/dashboard:latest
 ```
 
 2. Run container:
 ```bash
-docker run -d -p 80:80 -e GITHUB_TOKEN=your_token_here smartelco/dashboard:latest
+docker run -d -p 80:80 -e GITHUB_TOKEN=your_token_here ajarka/dashboard:latest
 ```
 
 ### Using Docker Compose
@@ -84,7 +84,7 @@ GITHUB_TOKEN=your_github_token_here
 version: '3.8'
 services:
   dashboard:
-    image: smartelco/dashboard:1.0.0  # Specify version here
+    image: ajarka/dashboard:1.0.0  # Specify version here
     ports:
       - "80:80"
     environment:

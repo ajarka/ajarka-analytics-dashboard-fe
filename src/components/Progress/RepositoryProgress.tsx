@@ -197,7 +197,7 @@ export const RepositoryProgress: Component<RepositoryProgressProps> = (props) =>
             .filter(project => project.issues.some(issue => issue.repository === repo.name))
             .map(project => ({
                 label: project.name,
-                href: `https://github.com/orgs/Smartelco/projects/${project.number}`
+                href: `https://github.com/orgs/ajarka/projects/${project.number}`
             }));
 
         return {
@@ -307,7 +307,7 @@ export const RepositoryProgress: Component<RepositoryProgressProps> = (props) =>
                                         </div>
                                     </div>
                                 }
-                                href={`https://github.com/Smartelco/${repo.name}`}
+                                href={`https://github.com/ajarka/${repo.name}`}
                             />
                         );
                     }}

@@ -212,7 +212,7 @@ export const fetchOrgProjects = async () => {
 
         const query = `
         query {
-            organization(login: "Smartelco") {
+            organization(login: "ajarka") {
                 projectsV2(first: 20) {
                     nodes {
                         id
@@ -349,7 +349,7 @@ export const fetchOrgProjects = async () => {
 
 export const fetchOrgRepositories = async () => {
     try {
-        const { data } = await makeRestApiCall('get', '/orgs/Smartelco/repos?per_page=100');
+        const { data } = await makeRestApiCall('get', '/orgs/ajarka/repos?per_page=100');
         return data;
     } catch (error) {
         (window as any).DebugLogger.error('Error fetching repositories:', error);
@@ -359,7 +359,7 @@ export const fetchOrgRepositories = async () => {
 
 export const fetchRepoIssues = async (repoName: string) => {
     try {
-        const { data: issues } = await makeRestApiCall('get', `/repos/Smartelco/${repoName}/issues`, {
+        const { data: issues } = await makeRestApiCall('get', `/repos/ajarka/${repoName}/issues`, {
             params: {
                 state: 'all',
                 per_page: 100
@@ -421,7 +421,7 @@ export const fetchRepoIssues = async (repoName: string) => {
                 updated_at: issue.updated_at,
                 repository: {
                     name: repoName,
-                    full_name: `Smartelco/${repoName}`
+                    full_name: `ajarka/${repoName}`
                 },
                 assignee: issue.assignee ? {
                     login: issue.assignee.login,
@@ -463,7 +463,7 @@ const findProjectItem = (
 export const fetchRepoPulls = async (repoName: string) => {
     try {
         // Dapatkan semua PR dulu
-        const { data: prs } = await makeRestApiCall('get', `/repos/Smartelco/${repoName}/pulls`, {
+        const { data: prs } = await makeRestApiCall('get', `/repos/ajarka/${repoName}/pulls`, {
             params: {
                 state: 'all',
                 per_page: 100
@@ -474,7 +474,7 @@ export const fetchRepoPulls = async (repoName: string) => {
         const detailedPRs = await Promise.all(prs.map(async (pr: { number: any; }) => {
             try {
                 const { data: details } = await restClient.get(
-                    `repos/Smartelco/${repoName}/pulls/${pr.number}`
+                    `repos/ajarka/${repoName}/pulls/${pr.number}`
                 );
                 return {
                     ...pr,
@@ -483,7 +483,7 @@ export const fetchRepoPulls = async (repoName: string) => {
                     changed_files: details.changed_files,
                     repository: {
                         name: repoName,
-                        full_name: `Smartelco/${repoName}`
+                        full_name: `ajarka/${repoName}`
                     }
                 };
             } catch (error) {
@@ -495,7 +495,7 @@ export const fetchRepoPulls = async (repoName: string) => {
                     changed_files: 0,
                     repository: {
                         name: repoName,
-                        full_name: `Smartelco/${repoName}`
+                        full_name: `ajarka/${repoName}`
                     }
                 };
             }
@@ -511,7 +511,7 @@ export const fetchRepoPulls = async (repoName: string) => {
 export const fetchRepoCommits = async (repoName: string) => {
     try {
         // First check if the repository exists and has commits
-        const repoResponse = await makeRestApiCall('get', `/repos/Smartelco/${repoName}`);
+        const repoResponse = await makeRestApiCall('get', `/repos/ajarka/${repoName}`);
 
         // If repository is empty, return empty array with repository info
         if (repoResponse.data.size === 0) {
@@ -529,12 +529,12 @@ export const fetchRepoCommits = async (repoName: string) => {
                 author: null,
                 repository: {
                     name: repoName,
-                    full_name: `Smartelco/${repoName}`
+                    full_name: `ajarka/${repoName}`
                 }
             }];
         }
 
-        const { data } = await restClient.get(`/repos/Smartelco/${repoName}/commits`, {
+        const { data } = await restClient.get(`/repos/ajarka/${repoName}/commits`, {
             params: { per_page: 100 }
         });
 
@@ -554,7 +554,7 @@ export const fetchRepoCommits = async (repoName: string) => {
             } : null,
             repository: {
                 name: repoName,
-                full_name: `Smartelco/${repoName}`
+                full_name: `ajarka/${repoName}`
             }
         }));
     } catch (error: any) {
@@ -572,7 +572,7 @@ export const fetchRepoCommits = async (repoName: string) => {
                 author: null,
                 repository: {
                     name: repoName,
-                    full_name: `Smartelco/${repoName}`
+                    full_name: `ajarka/${repoName}`
                 }
             }];
         }
@@ -586,7 +586,7 @@ export const fetchRepoCommits = async (repoName: string) => {
 const fetchIssueComments = async (repoName: string, issueNumber: number) => {
     try {
         const { data } = await restClient.get(
-            `/repos/Smartelco/${repoName}/issues/${issueNumber}/comments`
+            `/repos/ajarka/${repoName}/issues/${issueNumber}/comments`
         );
 
         return data.map((comment: any) => ({
@@ -611,7 +611,7 @@ const fetchIssueComments = async (repoName: string, issueNumber: number) => {
 const fetchPullComments = async (repoName: string, pullNumber: number) => {
     try {
         const { data } = await restClient.get(
-            `/repos/Smartelco/${repoName}/pulls/${pullNumber}/comments`
+            `/repos/ajarka/${repoName}/pulls/${pullNumber}/comments`
         );
         console.log('Pull comments:', data);
         return data.map((comment: any) => ({
@@ -636,8 +636,8 @@ export const fetchGithubData = async () => {
     try {
         // Fetch basic data first
         const [membersResponse, reposResponse] = await Promise.all([
-            makeRestApiCall('get', '/orgs/Smartelco/members?per_page=100'),
-            makeRestApiCall('get', '/orgs/Smartelco/repos?per_page=100'),
+            makeRestApiCall('get', '/orgs/ajarka/members?per_page=100'),
+            makeRestApiCall('get', '/orgs/ajarka/repos?per_page=100'),
         ]);
 
         const members = membersResponse.data;

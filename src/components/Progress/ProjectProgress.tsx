@@ -267,7 +267,7 @@ export const ProjectProgress: Component<ProjectProgressProps> = (props) => {
                                         title: 'Repositories',
                                         items: metadata.repositories.map(repo => ({
                                             label: repo,
-                                            href: `https://github.com/Smartelco/${repo}`
+                                            href: `https://github.com/ajarka/${repo}`
                                         }))
                                     }
                                 ]}

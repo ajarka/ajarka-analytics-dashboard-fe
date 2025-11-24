@@ -526,13 +526,13 @@ export const ProjectTimelineTable: Component<ProjectTimelineTableProps> = (props
     };
 
     const getGithubUrl = (project: GithubProject, repoName?: string) => {
-        // For project URL: https://github.com/orgs/Smartelco/projects/7
+        // For project URL: https://github.com/orgs/ajarka/projects/7
         if (!repoName) {
-            return `https://github.com/orgs/Smartelco/projects/${project.number}`;
+            return `https://github.com/orgs/ajarka/projects/${project.number}`;
         }
         
-        // For repository URL: https://github.com/Smartelco/wfm-osp-fe
-        return `https://github.com/Smartelco/${repoName}`;
+        // For repository URL: https://github.com/ajarka/wfm-osp-fe
+        return `https://github.com/ajarka/${repoName}`;
     };
 
     return (

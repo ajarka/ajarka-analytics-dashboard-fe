@@ -109,7 +109,7 @@ const IssuePopoverContent = (props: IssuePopoverContentProps) => {
                             #{props.issue?.number}
                         </Text>
                         <a
-                            href={`https://github.com/Smartelco/${props.issue?.repository?.name}/issues/${props.issue?.number}`}
+                            href={`https://github.com/ajarka/${props.issue?.repository?.name}/issues/${props.issue?.number}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"

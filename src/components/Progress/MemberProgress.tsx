@@ -64,7 +64,7 @@ export const MemberProgress: Component<MemberProgressProps> = (props) => {
             if (hasIssues) {
                 projectMap.set(project.number, {
                     label: project.name,
-                    href: `https://github.com/orgs/Smartelco/projects/${project.number}`
+                    href: `https://github.com/orgs/ajarka/projects/${project.number}`
                 });
             }
         });
@@ -74,7 +74,7 @@ export const MemberProgress: Component<MemberProgressProps> = (props) => {
         member.issues.forEach(issue => {
             repoMap.set(issue.repository.name, {
                 label: issue.repository.name,
-                href: `https://github.com/Smartelco/${issue.repository.name}`
+                href: `https://github.com/ajarka/${issue.repository.name}`
             });
         });
 

@@ -72,7 +72,7 @@ export const Navbar: Component<NavbarProps> = (props) => {
                                     overflow-hidden
                                 ">
                                     <img 
-                                        src="https://avatars.githubusercontent.com/u/189189758?s=400&u=bc2486799b62f31fa84c1dcf4d6fdeee4b46abf4&v=4" 
+                                        src="https://avatars.githubusercontent.com/u/111179396?s=200&v=4" 
                                         alt="Logo"
                                         class="w-8 h-8 object-cover transform group-hover:scale-110 transition-transform"
                                     />
@@ -85,13 +85,13 @@ export const Navbar: Component<NavbarProps> = (props) => {
                                 sm:text-base
                                 xs:text-sm
                             " style={{ 'font-family': 'Figtree' }}>
-                                <span class="hidden lg:inline">Smartelco Progress</span>
-                                <span class="lg:hidden">Smartelco</span>
+                                <span class="hidden lg:inline">Ajarka Progress</span>
+                                <span class="lg:hidden">ajarka</span>
                             </span>
                         </A>
 
                         <a 
-                            href="https://github.com/Smartelco"
+                            href="https://github.com/ajarka"
                             target="_blank"
                             rel="noopener noreferrer"
                             class="

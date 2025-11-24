@@ -10,9 +10,9 @@ pipeline {
         ENV = '.env'
         IMAGE = 'g3n1k/telcodash-fe'
         TAG = 'latest'
-        REPO = 'https://github.com/Smartelco/smartelco-analytics-dashboard-fe.git'
+        REPO = 'https://github.com/ajarka/ajarka-analytics-dashboard-fe.git'
         BRANCH = 'main'
-        CRED_ID = 'Smartelco-IT'
+        CRED_ID = 'ajarka-IT'
         DOCKER_ID = 'test-cicd-docker'
         LOG_FILE = "jenkins_error.log"
     }

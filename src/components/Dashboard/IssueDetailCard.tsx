@@ -146,7 +146,7 @@ export const IssueDetailCard: Component<IssueDetailCardProps> = (props) => {
                         )}
                     </div>
                     <a
-                        href={`https://github.com/Smartelco/${props.issue.repository.name}/issues/${props.issue.number}`}
+                        href={`https://github.com/ajarka/${props.issue.repository.name}/issues/${props.issue.number}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         class="text-blue-600 hover:text-blue-700 flex items-center space-x-1"

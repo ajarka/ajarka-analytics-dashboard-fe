@@ -482,7 +482,7 @@ export const MemberDetail: Component = () => {
                                                         {getDueDateStatus(issue).label}
                                                     </Badge>
                                                     <a
-                                                        href={`https://github.com/Smartelco/${issue.repository.name}/issues/${issue.number}`}
+                                                        href={`https://github.com/ajarka/${issue.repository.name}/issues/${issue.number}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         class="text-blue-500 hover:text-blue-700"
